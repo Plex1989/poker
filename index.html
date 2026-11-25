@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>PokerLab Pro — Entrenador Avanzado de Decisiones & Mississippi</title>
-  <meta name="description" content="Simulador profesional configurable de Texas Hold'em No-Limit con ciegas editables, Mississippi Straddle y 3 niveles de dificultad." />
+  <meta name="description" content="Simulador profesional configurable de Texas Hold'em No-Limit con ciegas editables, Mississippi Straddle y retroalimentación personalizada por decisión." />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,9 +35,6 @@
     .animate-slide-up {
       animation: slideUp 0.22s ease-out forwards;
     }
-    /* Hide scrollbar for horizontal pill bars on mobile */
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col selection:bg-emerald-500 selection:text-slate-950">
@@ -79,7 +76,7 @@
           Configura tu mesa y <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-300">entrena como Pro</span>
         </h1>
         <p class="text-slate-400 text-xs sm:text-sm max-w-xl mx-auto">
-          Ajusta las ciegas, el stack y el nivel de dificultad. Todos los botes y apuestas se adaptan automáticamente a tu partida.
+          Ajusta ciegas, entrada y nivel. Cada opción te explica exactamente por qué funciona o por qué pierde dinero.
         </p>
       </div>
 
@@ -260,13 +257,21 @@
         <!-- Rendered by JS -->
       </div>
 
-      <!-- Immediate Feedback Drawer -->
+      <!-- Immediate Tailored Feedback Drawer -->
       <div id="feedback-box" class="hidden mt-4 rounded-2xl p-4 border animate-slide-up">
         <div class="flex items-start gap-2.5">
           <div id="feedback-icon" class="text-lg sm:text-xl mt-0.5 shrink-0">✅</div>
-          <div class="flex-1">
+          <div class="flex-1 min-w-0">
             <h3 id="feedback-title" class="font-extrabold text-sm sm:text-base mb-1">¡Jugada Óptima!</h3>
             <p id="feedback-text" class="text-xs sm:text-sm leading-relaxed opacity-95"></p>
+            
+            <!-- Optimal alternative explanation shown only when the user picks a wrong option -->
+            <div id="optimal-followup" class="hidden mt-3 pt-3 border-t border-white/15">
+              <p class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-300 mb-1">
+                💡 Por qué la mejor jugada es la opción <span id="optimal-letter">B</span>:
+              </p>
+              <p id="optimal-text" class="text-xs sm:text-sm leading-relaxed text-emerald-100/95"></p>
+            </div>
           </div>
         </div>
         <div class="mt-4">
@@ -279,7 +284,7 @@
   </main>
 
   <footer class="border-t border-slate-800/80 py-5 text-center text-[11px] text-slate-500 px-4">
-    PokerLab Pro • Simulador dinámico con escalado real de ciegas y reglas profesionales
+    PokerLab Pro • Simulador dinámico con retroalimentación personalizada por jugada
   </footer>
 
   <script>
@@ -364,43 +369,27 @@
         }
       }
 
-      if (groups[0].count === 4) {
-        return { title: `Póker de ${RANK_NAMES[groups[0].rank]}`, sub: stackText };
-      }
+      if (groups[0].count === 4) return { title: `Póker de ${RANK_NAMES[groups[0].rank]}`, sub: stackText };
       if (groups[0].count === 3 && groups[1] && groups[1].count >= 2) {
         return { title: `Full House (${RANK_NAMES[groups[0].rank]} con ${RANK_NAMES[groups[1].rank]})`, sub: stackText };
       }
-      if (flushSuit) {
-        return { title: `Color Completo (${flushSuit})`, sub: stackText };
-      }
-      if (hasStraight) {
-        return { title: `Escalera (Corrida) Completa`, sub: stackText };
-      }
+      if (flushSuit) return { title: `Color Completo (${flushSuit})`, sub: stackText };
+      if (hasStraight) return { title: `Escalera (Corrida) Completa`, sub: stackText };
       if (groups[0].count === 3) {
         const isSet = hero[0].rank === hero[1].rank && hero[0].rank === groups[0].rank;
-        return {
-          title: `${isSet ? 'Trío Oculto (Set)' : 'Trío'} de ${RANK_NAMES[groups[0].rank]}`,
-          sub: stackText
-        };
+        return { title: `${isSet ? 'Trío Oculto (Set)' : 'Trío'} de ${RANK_NAMES[groups[0].rank]}`, sub: stackText };
       }
       if (groups[0].count === 2 && groups[1] && groups[1].count === 2) {
-        return {
-          title: `Doble Par (${RANK_NAMES[groups[0].rank]} y ${RANK_NAMES[groups[1].rank]})`,
-          sub: stackText
-        };
+        return { title: `Doble Par (${RANK_NAMES[groups[0].rank]} y ${RANK_NAMES[groups[1].rank]})`, sub: stackText };
       }
       if (groups[0].count === 2) {
         const pairRank = groups[0].rank;
         const boardVals = board.map(c => c.val).sort((a, b) => b - a);
         const pairVal = RANK_VALUES[pairRank];
         let desc = `Par de ${RANK_NAMES[pairRank]}`;
-        if (hero[0].rank === hero[1].rank && pairVal > boardVals[0]) {
-          desc += ' (Overpair)';
-        } else if (pairVal === boardVals[0]) {
-          desc += ' (Par Mayor)';
-        } else if (pairVal < boardVals[0]) {
-          desc += ' (Par Medio/Bajo)';
-        }
+        if (hero[0].rank === hero[1].rank && pairVal > boardVals[0]) desc += ' (Overpair)';
+        else if (pairVal === boardVals[0]) desc += ' (Par Mayor)';
+        else if (pairVal < boardVals[0]) desc += ' (Par Medio/Bajo)';
         return { title: desc, sub: stackText };
       }
 
@@ -409,9 +398,8 @@
     }
 
     // ==========================================
-    // 3. 36 ESCENARIOS DINÁMICOS (12 POR NIVEL)
+    // 3. 36 ESCENARIOS CON EXPLICACIÓN POR OPCIÓN
     // ==========================================
-    // Cada escenario usa una función build(c) donde c = { sb, bb, stack, miss }
     const SCENARIO_TEMPLATES = [
       // ---------------- NIVEL 1: FUNDAMENTOS ----------------
       {
@@ -427,7 +415,12 @@
             `Subir a ${fmt(c.bb * 3)} para robar las ciegas.`
           ],
           correct: 0,
-          exp: `A-7 de diferente palo en primera posición es una "mano trampa". Faltan 4 jugadores por hablar y si sale un As te dominarán manos como A-K, A-Q o A-J.`
+          exps: [
+            `Exacto: A-7 de diferente palo en primera posición es una "mano trampa". Faltan 4 jugadores por hablar y si sale un As te dominarán manos como A-K, A-Q o A-J.`,
+            `Pagar ${fmt(c.bb)} en primera posición invita a que alguien detrás suba a ${fmt(c.bb * 6)}, obligándote a tirar tu ficha, o te deja jugando fuera de posición toda la mano con un As mal acompañado.`,
+            `Subir a ${fmt(c.bb * 6)} con A-7o desde el primer asiento infla un bote enorme fuera de posición con una mano que solo gana botes chicos y pierde botes grandes.`,
+            `Una subida pequeña a ${fmt(c.bb * 3)} en partidas caseras no saca a nadie: te van a pagar 3 o 4 jugadores y tendrás que jugar sin posición con un 7 de acompañante.`
+          ]
         })
       },
       {
@@ -443,7 +436,12 @@
             `Ir All-In por ${fmt(c.stack)}.`
           ],
           correct: 1,
-          exp: `Los pares chicos (2-2 a 7-7) valen ${fmt(c.bb)} para cazar un trío en el flop (12%). Si no cae el 4, los tiras sin dolor; si cae, les ganas la pila completa.`
+          exps: [
+            `Botarte desperdicia una oportunidad muy barata (${fmt(c.bb)}) de ganar toda la pila (${fmt(c.stack)}) de un amigo cuando ligues tu trío en el flop.`,
+            `Correcto: los pares chicos (2-2 a 7-7) valen ${fmt(c.bb)} para cazar un trío en el flop (12%). Si no cae el 4, los tiras sin dolor; si cae, les vacías la pila.`,
+            `Subir tan grande con 4-4 espanta a las manos malas y provoca que solo te paguen pares mayores (8-8 a A-A) o cartas altas que te dejan en problemas en el flop.`,
+            `Arriesgar ${fmt(c.stack)} para ganar solo ${fmt(c.sb + c.bb)} es pésimo negocio: si te pagan, irás muy por detrás contra pares mayores.`
+          ]
         })
       },
       {
@@ -459,7 +457,12 @@
             `Botarte por miedo a que alguien tenga AA o KK.`
           ],
           correct: 1,
-          exp: `Con Q-Q debes resubir a ${fmt(c.bb * 18)} para sacar a los jugadores con basura y quedarte mano a mano construyendo un bote grande con ventaja.`
+          exps: [
+            `Si solo pagas, los dos amigos que pusieron ${fmt(c.bb)} van a entrar barato también. Jugar Q-Q contra 4 rivales hace muy probable que alguien conecte doble par o trío barato.`,
+            `¡Bien jugado! Resubir a ${fmt(c.bb * 18)} saca a los jugadores con basura, aísla al agresor y construye un bote grande con la tercera mejor mano del póker.`,
+            `Una resubida mínima (${fmt(c.bb * 7)}) no saca a nadie y le regala odds excelentes a todos los demás para ver el flop barato contra tus Quinas.`,
+            `Q-Q es una mano monstruo (top 2% de la baraja). Botarte antes del flop por miedo a AA o KK te haría perder muchísimo dinero a largo plazo.`
+          ]
         })
       },
       {
@@ -475,7 +478,12 @@
             `Pagar y apostar cualquier flop.`
           ],
           correct: 1,
-          exp: `6-8 del mismo palo tiene un hueco en medio (le falta el 7). Solo se paga si ya entraron 3 o 4 jugadores al bote en buena posición, nunca mano a mano.`
+          exps: [
+            `Aunque sean del mismo palo, 6-8 tiene un hueco (le falta el 7) y solo liga color 1 de cada 118 veces en el flop. Pagar ${fmt(c.bb * 6)} mano a mano quema fichas.`,
+            `Correcto: 6-8 del mismo palo tiene un hueco en medio. Solo se paga si ya entraron 3 o 4 jugadores al bote en buena posición, nunca mano a mano contra una subida fuerte.`,
+            `Resubir de blof contra alguien que abrió en primera posición (UTG) es muy arriesgado porque su rango suele ser fuerte y no se va a tirar.`,
+            `Apostar sin haber conectado contra un rival que abrió en primera posición es regalar fichas cuando no se tira con pares altos.`
+          ]
         })
       },
       {
@@ -491,7 +499,12 @@
             `Rendirse en cuanto te toque.`
           ],
           correct: 1,
-          exp: `Tu rival falló el flop el 66% de las veces. Como tú subiste preflop en mesa seca con carta alta (Q), una C-Bet de medio bote (${fmt(c.bb * 7)}) gana de inmediato muchas veces.`
+          exps: [
+            `Si pasas, le das una carta gratis para que conecte su par chico o doble par, y además le revelas que fallaste el flop.`,
+            `¡Exacto! Tu rival falló el flop el 66% de las veces. Como tú subiste preflop en mesa seca, una C-Bet de medio bote (${fmt(c.bb * 7)}) gana la mano ahí mismo muy seguido.`,
+            `Apostar más del doble del bote espanta a todo lo que ganas y solo te paga si ya tiene una Q fuerte o trío.`,
+            `Rendirse teniendo el control de la mano y dos cartas altas (A-K) en una mesa sin proyectos es dejar dinero en la mesa.`
+          ]
         })
       },
       {
@@ -507,7 +520,12 @@
             `Botarte si te resube.`
           ],
           correct: 1,
-          exp: `Cuando tienes 8-8, 9-9 o 10-10 y caen puras cartas menores en el flop, tienes Overpair. Apuesta fuerte por valor contra tus amigos pagadores.`
+          exps: [
+            `Con 9-9 en mesa 7-4-2 no necesitas trío: ya tienes par máximo (Overpair). Pasar le da cartas gratis (como un A, K o Q) que arruinan tu mano.`,
+            `¡Correcto! Cuando tienes 8-8, 9-9 o 10-10 y caen puras cartas menores en el flop, tienes Overpair. Apuesta fuerte por valor contra tus amigos pagadores.`,
+            `Apostar tan poco (${fmt(c.bb * 2)}) le da precio regalado a cualquier carta alta (A-K, K-Q, J-10) para que te supere gratis en el turn.`,
+            `Con Overpair en mesa baja tienes la mejor mano casi siempre; no puedes planear botarte antes de ver acción.`
+          ]
         })
       },
       {
@@ -523,7 +541,12 @@
             `Ir All-In como semi-blof.`
           ],
           correct: 1,
-          exp: `Con una sola carta más alta en la mesa, pagas una apuesta mediana en el flop porque muchos rivales apuestan sin nada. Si vuelve a apostar fuerte en el turn, te botas.`
+          exps: [
+            `Si resubes, tiras todas las manos peores a las que ganas (A-Q, A-J, 8-8) y solo te pagan los Reyes o tríos que te van ganando.`,
+            `¡Muy bien! Con una sola carta más alta en la mesa, pagas una apuesta mediana en el flop porque muchos rivales apuestan sin nada. Si vuelve a apostar fuerte en el turn, te botas.`,
+            `Botarte ante una sola apuesta mediana en mesa seca es demasiado débil: el rival falla el Rey dos de cada tres veces.`,
+            `Ir All-In convierte tu par de nueves en un blof caro sin tener proyectos de respaldo.`
+          ]
         })
       },
       {
@@ -539,7 +562,12 @@
             `Pagar y esperar un 8 en el river.`
           ],
           correct: 1,
-          exp: `Con tres cartas altas (A-Q-10) por encima de tu par de ochos, tu mano perdió casi todo su valor contra un rango de subida preflop.`
+          exps: [
+            `En este flop tus 8-8 valen lo mismo que un par de doses: casi cualquier carta con la que tu rival subió antes del flop (A-K, A-Q, K-Q, J-J, 10-10) ya te superó.`,
+            `¡Correcto! Con tres cartas altas (A-Q-10) por encima de tu par de ochos, tu mano perdió casi todo su valor. Bótate y ahorra fichas.`,
+            `Resubir aquí es quemar dinero contra un rival que tiene muchísimos Ases, Quinas y proyectos fuertes en su rango.`,
+            `Solo hay dos ochos en toda la baraja (4% de probabilidad en el turn). Pagar ${fmt(c.bb * 9)} buscando un milagro de 4% pierde dinero.`
+          ]
         })
       },
       {
@@ -555,7 +583,12 @@
             `Esperar al river para apostar.`
           ],
           correct: 1,
-          exp: `Hay proyecto de color (dos corazones) y tus amigos pagan con cualquier Q o proyecto. Nunca pases esperando trampa: cobra caro de inmediato.`
+          exps: [
+            `Si pasas, les regalas una carta gratis para que completen su color de corazones y te ganen tu trío sin haber pagado nada.`,
+            `¡Excelente! Hay proyecto de color (dos corazones) y tus amigos pagan con cualquier Q o proyecto. Nunca pases esperando trampa: cobra caro de inmediato.`,
+            `Una apuesta minúscula (${fmt(c.bb * 2)}) le da precio de regalo a cualquiera que esté buscando el tercer corazón.`,
+            `Si esperas al river, perderás dos calles de valor contra manos como A-Q o K-Q y les darás dos cartas gratis a los proyectos.`
+          ]
         })
       },
       {
@@ -571,7 +604,12 @@
             `Apostar en turn y river.`
           ],
           correct: 1,
-          exp: `Regla de oro: nunca intentes blofear a alguien que no sabe retirarse. Guarda tus fichas para cuando sí tengas mano real.`
+          exps: [
+            `Si sabes que nunca tira ni un par chico, apostar sin tener nada es regalarle tus fichas directamente.`,
+            `¡Regla de oro! Nunca intentes blofear a alguien que no sabe retirarse. Guarda tus fichas para cuando sí tengas mano real.`,
+            `Ir All-In contra un pagador sin tener pareja ni proyecto es la forma más rápida de perder toda tu entrada.`,
+            `Disparar dos barriles de blof contra un rival que paga todo multiplica tus pérdidas.`
+          ]
         })
       },
       {
@@ -587,7 +625,12 @@
             `9 outs = 36% de probabilidad.`
           ],
           correct: 1,
-          exp: `Corrida cerrada (Gutshot): solo existen cuatro 6 en la baraja (4 outs). En el flop multiplicas 4 × 4 = 16% de probabilidad.`
+          exps: [
+            `8 outs sería si tuvieras corrida abierta por ambos lados (por ejemplo 7-8 en mesa 5-6). Aquí solo te sirve el 6 (corrida cerrada).`,
+            `¡Correcto! Corrida cerrada (Gutshot): solo existen cuatro 6 en la baraja (4 outs). En el flop multiplicas 4 × 4 = 16% de probabilidad.`,
+            `8% es tu probabilidad en el Turn (cuando ya solo falta una carta y multiplicas por 2). En el flop multiplicas por 4.`,
+            `9 outs y 36% corresponden a un proyecto de color (cuando tienes 4 cartas del mismo palo), no a una corrida cerrada.`
+          ]
         })
       },
       {
@@ -603,7 +646,12 @@
             `Pagar porque tienes 16%.`
           ],
           correct: 1,
-          exp: `En el turn multiplicas por 2: 4 outs × 2 = 8% (1 de cada 12 veces). Pagar ${fmt(c.bb * 25)} en un bote de ${fmt(c.bb * 30)} es un error matemático grave.`
+          exps: [
+            `El 6 solo caerá 1 de cada 12 veces (8%). Pagar casi el bote completo buscando una probabilidad tan baja pierde mucho dinero.`,
+            `¡Exacto! En el turn multiplicas por 2: 4 outs × 2 = 8%. Pagar ${fmt(c.bb * 25)} en un bote de ${fmt(c.bb * 30)} no tiene precio matemático.`,
+            `Ir All-In con solo 4 outs en el turn contra un rival que muestra fuerza en mesa con Rey es quemar tu pila.`,
+            `16% era en el flop (cuando faltaban dos cartas). En el turn solo queda una carta, así que tu probabilidad baja a la mitad (8%).`
+          ]
         })
       },
 
@@ -621,7 +669,12 @@
             `Subir mínimo a ${fmt(c.miss * 2)}.`
           ],
           correct: 1,
-          exp: `Q-J de diferente palo no es mano monstruo. Ya tienes la mejor posición de la mesa y 4 rivales dentro; pasar te permite ver el flop gratis sin inflar el bote dominado.`
+          exps: [
+            `Q-J de diferente palo parece bonita, pero si subes fuerte tus amigos te pagarán con manos que te dominan (A-Q, K-Q, A-J, K-J) y jugarás un bote gigante en desventaja.`,
+            `¡Perfecto! Q-J offsuit no es mano monstruo. Ya compraste la mejor posición de la mesa; pasar te deja ver el flop gratis contra 4 rivales sin arriesgar fichas de más.`,
+            `Ir All-In con Q-J offsuit arriesga toda tu entrada para que solo te paguen manos mejores (AA-JJ, AK, AQ).`,
+            `Subir mínimo a ${fmt(c.miss * 2)} no saca a nadie y solo infla un bote multi-jugador con una mano mediana fuera de color.`
+          ]
         })
       },
       {
@@ -637,7 +690,12 @@
             `Ir All-In directo.`
           ],
           correct: 1,
-          exp: `Nunca escondas Reyes contra 4 rivales. Con tanto dinero muerto en el centro, sube a ${fmt(c.miss * 4.5)} para sacar manos basura que puedan ligar doble par.`
+          exps: [
+            `Pasar con Reyes contra 4 rivales es muy peligroso: dejas entrar gratis manos como 7-4 o A-3 que pueden conectar doble par o trío barato y romper tus Reyes.`,
+            `¡Jugada maestra! Con tanto dinero muerto en el centro, subir a ${fmt(c.miss * 4.5)} limpia la mesa, aísla a 1 o 2 clientes y construye un bote gigante con ventaja.`,
+            `Una subida tan corta (${fmt(c.miss * 2)}) provoca efecto dominó: si paga el primero, pagan los 4 y sigues jugando contra toda la mesa.`,
+            `Ir All-In directo (${fmt(c.stack)}) espanta a manos buenas que sí te pagarían ${fmt(c.miss * 4.5)} (como A-Q, K-Q o J-J) y provoca que solo te pague quien tenga Ases (AA).`
+          ]
         })
       },
       {
@@ -653,7 +711,12 @@
             `Sí, para obligarlos a apostar.`
           ],
           correct: 1,
-          exp: `Poner ${fmt(c.miss)} a ciegas en primeras posiciones te obliga a jugar toda la mano fuera de posición. Solo pon Mississippi en el Botón, donde hablas al último postflop.`
+          exps: [
+            `Poner Mississippi fuera del Botón te obliga a jugar un bote 5 veces más grande siendo de los primeros en hablar en flop, turn y river. Es una fuga de dinero.`,
+            `¡Correcto! El único motivo matemático para poner Mississippi es comprar el derecho a hablar al último durante toda la mano desde el Botón.`,
+            `Incluso con pila profunda, jugar botes inflados a ciegas sin posición contra rivales agresivos reduce tus ganancias.`,
+            `Obligar a todos a jugar más caro cuando tú estás en mala posición beneficia a quien esté sentado en el Botón, no a ti.`
+          ]
         })
       },
       {
@@ -669,7 +732,12 @@
             `Pagar y pasar en cualquier flop.`
           ],
           correct: 1,
-          exp: `Con A♦ J♦ y tanto dinero muerto de jugadores que suelen pagar con cartas débiles, resubir a ${fmt(c.bb * 22)} toma el control y limpia la mesa.`
+          exps: [
+            `Si solo pagas, jugarás un bote de 4 personas fuera de posición (primero en hablar). Si sale un As o una Jota, no sabrás si alguien tiene mejor acompañante.`,
+            `¡Excelente Squeeze! Hay muchísimo dinero muerto (${fmt(c.bb * 19)}) y A♦ J♦ tiene gran jugabilidad. Resubir a ${fmt(c.bb * 22)} se lleva el bote preflop muchas veces o aísla a un rival.`,
+            `A♦ J♦ del mismo palo es una mano muy fuerte para botarla ante una sola subida en mesa 6-max.`,
+            `Jugar tan pasivo (check-fold) fuera de posición desperdicia el potencial de una mano fuerte como A-J suited.`
+          ]
         })
       },
       {
@@ -685,7 +753,12 @@
             `Ir All-In por ${fmt(c.stack)}.`
           ],
           correct: 0,
-          exp: `Se cumplen las 3 condiciones: conectores seguidos del mismo palo, posición de Botón y bote multi-jugador que te paga muy bien si conectas.`
+          exps: [
+            `¡Correcto! Se cumplen las 3 condiciones ideales: conectores seguidos del mismo palo, posición de Botón y bote multi-jugador que te paga toda la pila si conectas corrida o color.`,
+            `9♠ 8♠ es exactamente el tipo de mano con la que ganas botes gigantes escondidos cuando tus amigos tienen pares altos como A-A o K-K.`,
+            `Resubir de blof contra 3 jugadores (dos de ellos ya pagaron) tiene poca probabilidad de hacerlos botar a todos y te mete en un bote gigante con 9 alto.`,
+            `Ir All-In preflop con 9-8 suited quema tu entrada contra manos hechas.`
+          ]
         })
       },
       {
@@ -701,7 +774,12 @@
             `Pagar solo si el bote es gigante.`
           ],
           correct: 1,
-          exp: `Tienes 9 outs de picas (9 × 4 = 36% en el flop) más 3 Ases. Hacer Semi-Blof subiendo te da dos formas de ganar: que se tire ya o ligar tu color.`
+          exps: [
+            `Tirar un proyecto de color al As en el flop es un error matemático: tienes 9 picas (36%) más 3 Ases (12%) que te dan la mejor mano casi la mitad de las veces.`,
+            `¡Bien jugado! Hacer Semi-Blof subiendo te da dos formas de ganar: que tu rival tire una mano media ya mismo, o ligar tu color máximo en turn/river.`,
+            `En el flop pagas por ver dos cartas; decidir de antemano botarte en el turn ignora los pot odds si el rival vuelve a apostar barato.`,
+            `Con 36% de equidad en el flop y posición de Botón, ya tienes precio y potencial suficientes para continuar ahora mismo.`
+          ]
         })
       },
       {
@@ -717,7 +795,12 @@
             `Esperar al river para ver si cae.`
           ],
           correct: 1,
-          exp: `Con 9 cartas de color + 6 cartas de corrida (15 outs × 4 = 60%), eres matemáticamente favorito incluso contra alguien que ya tenga par de Ases.`
+          exps: [
+            `Si solo pagas y no sale en el turn, pierdes iniciativa y tu rival puede frenar si cae una pica o un 6/J en el turn.`,
+            `¡Exacto! Con 9 cartas de color + 6 cartas de corrida (15 outs × 4 = 60%), eres matemáticamente favorito incluso contra alguien que ya tenga par de Ases.`,
+            `Este es el proyecto más fuerte posible en Texas Hold'em; botarte aquí es tirar una mano favorita.`,
+            `No necesitas esperar: en el flop tienes el máximo porcentaje de victoria (60%) y debes maximizar el bote ahora.`
+          ]
         })
       },
       {
@@ -733,7 +816,12 @@
             `Botarte si no tienes par.`
           ],
           correct: 1,
-          exp: `Aunque tu probabilidad sea 18% (1 de cada 5.5 veces), pagar ${fmt(c.bb * 7)} para ganar ${fmt(c.bb * 57)} te da más de 8 a 1 en precio (Pot Odds). Es muy rentable.`
+          exps: [
+            `Aunque 18% parezca poco, el precio manda: solo necesitas ganar 1 de cada 8 veces (11%) para que el pago sea rentable, y tú ganas 18%.`,
+            `¡Matemática pura! Pagar ${fmt(c.bb * 7)} para ganar ${fmt(c.bb * 57)} te da más de 8 a 1 en precio (Pot Odds). Es una llamada obligatoria y muy rentable.`,
+            `Subir gigante en el turn con solo 18% de equidad cuando tu rival muestra un As te deja atrapado si te paga o va All-In.`,
+            `Un proyecto de color al Rey tiene muchísimo más valor que un par chico aquí; nunca lo tires ante una apuesta tan barata.`
+          ]
         })
       },
       {
@@ -749,7 +837,12 @@
             `Ir All-In.`
           ],
           correct: 1,
-          exp: `Control de bote cumplido: pagaste una calle por si era C-Bet sin nada, pero un segundo barril fuerte en mesa con As indica que vas perdiendo contra A-X.`
+          exps: [
+            `Los jugadores de partidas caseras casi nunca disparan dos barriles seguidos sin tener el As en una mesa A-8-3-5. Pagar aquí es regalar fichas.`,
+            `¡Disciplina de ganador! Cumpliste el control de bote: pagaste una calle por si era C-Bet sin nada, pero la segunda apuesta fuerte confirma que vas perdiendo.`,
+            `Resubir de blof con J-J convierte una mano con valor de showdown en un blof contra alguien que ya representa tener un As.`,
+            `Ir All-In con segundo par en mesa con As es suicidarte contra A-K, A-Q, A-J y tríos.`
+          ]
         })
       },
       {
@@ -765,7 +858,12 @@
             `Pagar todo hasta el river.`
           ],
           correct: 1,
-          exp: `Tu acompañante (6) es muy bajo. Ante mucha acción en mesa A-K-8, tu rival casi siempre tiene A-K, A-Q, A-J o trío.`
+          exps: [
+            `Con A-6 en mesa A-K-8 tienes el peor As posible. Si vas All-In, todas las manos con las que tu rival subió preflop (A-K, A-Q, A-J, A-10, K-K, 8-8) te ganan.`,
+            `¡Correcto! Esta es la trampa clásica de los Ases con carta chica: ganas botes chicos y pierdes la pila entera si te enamoras de tu par.`,
+            `Resubir más fuerte solo aísla contra las manos que te tienen completamente dominado.`,
+            `Pagar tres calles de apuestas fuertes con kicker 6 en mesa A-K-8 es una de las mayores fugas en mesas $1/$2.`
+          ]
         })
       },
       {
@@ -781,7 +879,12 @@
             `Ir All-In por ${fmt(c.stack * 0.8)}.`
           ],
           correct: 1,
-          exp: `Contra rivales que pagan de más, pasar aquí deja dinero en la mesa. Te van a pagar manos peores como K-Q, Q-J, Q-10 o un 9.`
+          exps: [
+            `Si tu rival tuviera trío o doble par, normalmente habría apostado o resubido antes. Pasar aquí deja muchísimo dinero sin cobrar.`,
+            `¡Excelente! Contra rivales que pagan de más, una apuesta de medio bote (${fmt(c.bb * 22)}) será pagada por K-Q, Q-J, Q-10 y hasta un 9.`,
+            `Una apuesta minúscula (${fmt(c.bb * 2)}) cobra casi nada cuando tienes claramente la mejor mano en una mesa sin peligro.`,
+            `Un All-In gigante en el river asusta a las Quinas peores (K-Q, Q-J) que sí pagarían una apuesta mediana.`
+          ]
         })
       },
       {
@@ -797,7 +900,12 @@
             `Ir All-In.`
           ],
           correct: 1,
-          exp: `A-9 offsuit se bota cuando alguien ya subió antes que tú. Pero si nadie subió y estás en últimas posiciones, sube tú a ${fmt(c.bb * 5)} para robar ciegas o jugar con iniciativa.`
+          exps: [
+            `A-9 offsuit se bota en primeras posiciones o cuando alguien ya subió antes que tú. Pero cuando todos se botaron hasta ti en CO, es muy superior al promedio.`,
+            `¡Exacto! Al subir tú a ${fmt(c.bb * 5)} cuando nadie mostró fuerza, robas las ciegas muchas veces o juegas con iniciativa y posición.`,
+            `Igualar solo ${fmt(c.bb)} invita a que las ciegas entren gratis y te compliquen el flop con manos aleatorias.`,
+            `Ir All-In preflop con A-9o arriesga toda tu pila para ganar apenas las ciegas.`
+          ]
         })
       },
 
@@ -818,7 +926,12 @@
               `Hacer min-raise a ${fmt(pot)}.`
             ],
             correct: 1,
-            exp: `Con SPR bajo (~1.5) y Overpair (K-K) en mesa coordinada (10-8-4), estás matemáticamente comprometido. Ir All-In en el flop cobra el máximo a A-10, Q-J, 9-9 y proyectos de escalera antes de que caigan cartas que maten la acción.`
+            exps: [
+              `Si solo pagas con SPR tan bajo, le das una carta gratis a manos como A-10, Q-J o 9-9, y si cae un As o una Jota en el turn se congela toda tu acción.`,
+              `¡Jugada Pro! Con SPR ~1.5 y Overpair (K-K) en mesa coordinada (10-8-4), estás matemáticamente comprometido. Ir All-In en el flop cobra el máximo antes de que caigan cartas peligrosas.`,
+              `Botar Reyes en un flop 10-8-4 con SPR 1.5 es un error matemático grave: vas muy por delante de casi todo su rango.`,
+              `Un min-raise deja al rival con un pago baratísimo para ligar sus outs en el turn.`
+            ]
           };
         }
       },
@@ -837,7 +950,12 @@
               `Pasar porque los rivales nunca tiran parejas.`
             ],
             correct: 1,
-            exp: `Concepto Pro (Blockers): al tener el A♥ en tu mano, es imposible que tu rival tenga el color máximo (Nut Flush). Una apuesta polarizada grande (${fmt(pot * 0.8)}) presiona enormemente a manos medias como K-Q o Q-J sin corazones.`
+            exps: [
+              `Pasar con el A♥ en la mano en un river que completa el color desaprovecha el mejor blocker de toda la baraja para ganar un bote grande.`,
+              `¡Concepto Pro! Al tener el A♥ en tu mano, es imposible que tu rival tenga el color máximo (Nut Flush). Una apuesta grande (${fmt(pot * 0.8)}) presiona enormemente a manos como K-Q o Q-J sin corazones.`,
+              `Una apuesta minúscula (${fmt(c.bb * 3)}) no asusta a nadie: cualquier pareja de Reyes o Nueves te va a pagar por curiosidad.`,
+              `Incluso los jugadores pagadores sienten mucha presión cuando se completa un tercer corazón en el river y reciben una apuesta fuerte.`
+            ]
           };
         }
       },
@@ -856,7 +974,12 @@
               `Resubir al doble.`
             ],
             correct: 1,
-            exp: `Probabilidades implícitas inversas: cuando un jugador pasivo resube fuerte en una mesa con 3 picas altas (A-K-9), nunca lo hace con peor mano que tu color al 6. Tirar un color bajo aquí ahorra decenas de ciegas.`
+            exps: [
+              `Ir All-In con color al 6 cuando ya están A♠, K♠ y 9♠ en la mesa solo logra que te paguen colores mayores (Q♠, J♠, 10♠) que te destruyen.`,
+              `¡Excelente lectura Pro! Cuando un jugador pasivo resube fuerte en el river en mesa con 3 picas altas, nunca lo hace con peor mano que tu color al 6. Tirarlo ahorra decenas de ciegas.`,
+              `Pagar "por curiosidad" contra un rival pasivo que resube el river es una de las fugas más caras en niveles medios.`,
+              `Resubir al doble no tira ningún color mayor y regala aún más fichas.`
+            ]
           };
         }
       },
@@ -875,7 +998,12 @@
               `Pagar y botarte si no cae en el river.`
             ],
             correct: 1,
-            exp: `El Rey es una carta perfecta para representar que ligaste doble par o trío, y tienes 15 outs reales (~34% incluso si te pagan). El Check-Raise maximiza tu Fold Equity y construye un bote gigante.`
+            exps: [
+              `Si solo pagas en el turn y fallas en el river (66% de las veces), tendrás que botarte sin haber presionado nunca la mano media de tu rival.`,
+              `¡Jugada maestra! El Rey asusta a las parejas medias del rival y tú tienes 15 outs reales (~34% incluso si te pagan). El Check-Raise maximiza tu Fold Equity y construye un bote gigante.`,
+              `El Rey no solo no te perjudica, sino que te dio un proyecto de color adicional además de tu corrida abierta.`,
+              `Jugar pasivo con un combo-draw de 15 outs desperdicia la mitad de tu rentabilidad (ganar sin showdown).`
+            ]
           };
         }
       },
@@ -894,7 +1022,12 @@
               `Pagar y subir cualquier corazón en el river.`
             ],
             correct: 1,
-            exp: `En mesa emparejada (dos 9s), cartas como el K♥ o 2♥ completan tu color pero le dan Full House al rival, además de poder perder contra un corazón más alto. Tus outs reales son mucho menores a 9.`
+            exps: [
+              `Tus 9 outs NO están limpios: si cae el K♥ o el 2♥, puedes completar tu color justo cuando tu rival liga Full House, además de perder contra corazones más altos.`,
+              `¡Exacto! En mesa emparejada (dos 9s) con color bajo al 6, debes descontar los outs sucios. Con una apuesta casi del tamaño del bote (${fmt(pot * 0.9)}), botarte es la decisión matemática correcta.`,
+              `Ir All-In en el turn con un proyecto dominado en mesa emparejada quema tu pila cuando te pagan.`,
+              `Subir cualquier corazón en el river en mesa emparejada te hará perder toda tu pila contra Full Houses o colores al As/Reina.`
+            ]
           };
         }
       },
@@ -913,7 +1046,12 @@
               `Subir mínimo a ${fmt(c.miss * 2)}.`
             ],
             correct: 1,
-            exp: `Jugar A♠ Q♠ fuera de posición (SB) contra 4 rivales en bote multiway es muy difícil de rentabilizar. Subir fuerte a ${fmt(c.miss * 4.5)} captura el dinero muerto y aísla a 1 rival.`
+            exps: [
+              `Completar en la Ciega Chica crea un bote de 5 jugadores donde tú hablarás primero en cada calle. Es el peor escenario posible para A-Q.`,
+              `¡Perfecto! Subir fuerte a ${fmt(c.miss * 4.5)} captura el dinero muerto (${fmt(pot)}), saca a manos especulativas y aísla a 1 rival.`,
+              `A♠ Q♠ del mismo palo es una mano premium; botarla ante jugadores que solo igualaron el Mississippi sería demasiado pasivo.`,
+              `Una subida mínima (${fmt(c.miss * 2)}) le da precio regalado a todos los que ya igualaron para quedarse dentro.`
+            ]
           };
         }
       },
@@ -932,7 +1070,12 @@
               `Apostar medio bote.`
             ],
             correct: 1,
-            exp: `Cuando cae un As en el river y sabes que tu rival es pagador con cualquier As (A-K, A-Q, A-J, A-10), una Overbet (${fmt(pot * 1.25)}) extrae muchísimo más valor que una apuesta estándar porque los pagadores no tiran Top Pair.`
+            exps: [
+              `Apostar pequeño cuando el river trae un As contra un pagador deja muchísimo dinero sin cobrar: él va a pagar mucho más con su pareja de Ases.`,
+              `¡Jugada Pro Explotativa! Cuando cae un As en el river y tu rival es pagador con cualquier As (A-K, A-Q, A-J, A-10), una Overbet (${fmt(pot * 1.25)}) extrae el máximo valor posible.`,
+              `Pasar por miedo a una improbable escalera de 4-5 te hace perder un bote enorme cuando tienes el segundo mejor trío posible.`,
+              `Medio bote es aceptable en mesas neutras, pero contra pagadores que ligaron Top Pair en el river, la Overbet maximiza tus ganancias.`
+            ]
           };
         }
       },
@@ -952,7 +1095,12 @@
               `Hacer min-click a ${fmt(c.bb * 27)}.`
             ],
             correct: 1,
-            exp: `Con 100 BB de profundidad, ir All-In directo con A-K solo logra que te paguen AA y KK. Un 4-Bet medido a ${fmt(c.bb * 38)} extrae valor de manos peores (A-Q, J-J, 10-10) y bloquea combinaciones de AA/KK.`
+            exps: [
+              `Botar A-K ante un 3-Bet en posición tardía (CO vs BTN) es demasiado débil: A-K bloquea AA y KK y domina a A-Q y K-Q.`,
+              `¡Correcto! Un 4-Bet medido a ${fmt(c.bb * 38)} extrae valor de manos peores (A-Q, J-J, 10-10) y te permite decidir con claridad si el rival va All-In.`,
+              `Ir All-In directo por 100 BB (${fmt(c.stack)}) logra que el rival tire todo lo que ganas (A-Q, J-J) y solo te pague con AA y KK.`,
+              `Un min-click (${fmt(c.bb * 27)}) le da odds matemáticas para pagar con cualquier mano especulativa y ver el flop barato.`
+            ]
           };
         }
       },
@@ -971,7 +1119,12 @@
               `Botarte siempre que apuesten fuerte en el river.`
             ],
             correct: 1,
-            exp: `En el river todos los proyectos de color (diamantes) y escalera (Q-J, J-9) fallaron. Tu K-J bloquea manos de valor como K-J y escaleras con J, convirtiéndolo en el Bluff Catcher ideal contra un rival agresivo.`
+            exps: [
+              `Si te botas cada vez que fallan los proyectos en el river, los jugadores agresivos te van a robar todos los botes con aire.`,
+              `¡Lectura Pro! Todos los proyectos de diamantes y escalera (Q-J, J-9) fallaron, y tu J♣ bloquea manos como Q-J y K-J. Es el Bluff Catcher ideal contra un rival agresivo.`,
+              `Resubir All-In con K-J convierte una mano ganadora en blof: tiras sus blofs y solo te pagan A-K o tríos.`,
+              `Botarte automáticamente en el river sin analizar si los proyectos fallaron te vuelve explotable.`
+            ]
           };
         }
       },
@@ -990,7 +1143,12 @@
               `Ir All-In.`
             ],
             correct: 1,
-            exp: `Ante una C-Bet pequeña (1/3 del bote) en mesa baja, tu mano A♦ 10♦ tiene 6 outs limpios de overcards (A y 10) más proyecto trasero de color y posición para robar el bote si el rival frena en el turn.`
+            exps: [
+              `Ante una apuesta tan pequeña (1/3 del bote), solo necesitas ganar 20% de las veces. Tus dos cartas altas (A y 10) ya te dan 24% de equidad directa más proyecto trasero de color.`,
+              `¡Exacto! Hacer Float en posición con A♦ 10♦ te permite conectar par mayor en el turn o robar el bote si el rival pasa mostrando debilidad.`,
+              `Resubir grande aquí tira sus manos sin nada (que ya vas ganando) y te deja atrapado contra sus pares altos (9-9 a A-A).`,
+              `Ir All-In sin pareja ni proyecto directo quema toda tu pila contra cualquier pareja.`
+            ]
           };
         }
       },
@@ -1009,7 +1167,12 @@
               `Llamar tiempo y pagar.`
             ],
             correct: 1,
-            exp: `En mesa 9-8-7-6 (4-liner a escalera), un solo par de Ases sin ningún club ni escalera está muerto contra el rango de All-In de un jugador pasivo. Saber soltar AA en texturas letales distingue a los ganadores.`
+            exps: [
+              `"Nunca tirar Ases" es el mito más caro del póker: un solo par de Ases en mesa 9-8-7-6 pierde contra cualquier 10, cualquier 5, dobles pares y tríos.`,
+              `¡Disciplina de élite! En mesa 9-8-7-6 (4-liner a escalera), un rival pasivo jamás va All-In de blof. Saber soltar AA en texturas letales distingue a los verdaderos ganadores.`,
+              `Solo quedan dos Ases en la baraja (4% de probabilidad en el river), un precio terriblemente malo para pagar ${fmt(c.bb * 70)}.`,
+              `Pagar por orgullo contra un rango de All-In pasivo en mesa conectada regala toda tu entrada.`
+            ]
           };
         }
       },
@@ -1028,7 +1191,12 @@
               `Hacer min-raise.`
             ],
             correct: 1,
-            exp: `Ir All-In con 10-10 aísla solo contra manos que te dominan (JJ-AA, AK). Pagar en posición mantiene sus blofs en el bote y te permite evaluar el flop con ventaja posicional.`
+            exps: [
+              `Ir All-In con 10-10 tras un Squeeze fuerte aísla solo contra manos que te dominan (JJ-AA, AK) y hace que tiren los blofs.`,
+              `¡Jugada óptima! Pagar en posición mantiene sus blofs en el bote, te da opción de cazar trío de dieces y te permite jugar un flop bajo con ventaja posicional.`,
+              `Botar 10-10 teniendo posición y buen precio ante un Squeeze que muchas veces intenta robar el dinero muerto es demasiado conservador.`,
+              `Hacer min-raise no tiene sentido estratégico y compromete tu pila sin información.`
+            ]
           };
         }
       }
@@ -1104,16 +1272,13 @@
       bagIndex++;
       answered = false;
 
-      // Construir textos y valores escalados a la configuración actual
       currentBuilt = currentTemplate.build(config);
 
-      // Verificar cartas únicas
       const deck = new Deck();
       const heroObjs = currentTemplate.hero.map(c => deck.take(c));
       const boardObjs = currentTemplate.board.map(c => deck.take(c));
       const evalResult = evaluateHand(heroObjs, boardObjs);
 
-      // Actualizar interfaz
       document.getElementById('level-badge-pill').textContent = LEVEL_LABELS[config.level];
       document.getElementById('deck-progress').textContent = `Mano ${bagIndex} de ${bag.length}`;
       document.getElementById('sc-badge').textContent = currentTemplate.street;
@@ -1149,12 +1314,14 @@
       `).join('');
 
       document.getElementById('feedback-box').classList.add('hidden');
+      document.getElementById('optimal-followup').classList.add('hidden');
     }
 
     window.handleAnswer = function(selectedIdx) {
       if (answered) return;
       answered = true;
 
+      const letters = ['A', 'B', 'C', 'D'];
       const isCorrect = selectedIdx === currentBuilt.correct;
       stats.total++;
       if (isCorrect) {
@@ -1189,19 +1356,26 @@
       const fbIcon = document.getElementById('feedback-icon');
       const fbTitle = document.getElementById('feedback-title');
       const fbText = document.getElementById('feedback-text');
+      const optFollowup = document.getElementById('optimal-followup');
 
       fbBox.classList.remove('hidden', 'bg-emerald-950/70', 'border-emerald-500/50', 'text-emerald-100', 'bg-rose-950/70', 'border-rose-500/50', 'text-rose-100');
 
       if (isCorrect) {
         fbBox.classList.add('bg-emerald-950/70', 'border-emerald-500/50', 'text-emerald-100');
         fbIcon.textContent = '✅';
-        fbTitle.textContent = '¡Jugada Óptima!';
+        fbTitle.textContent = `¡Jugada Óptima! (Opción ${letters[selectedIdx]})`;
+        fbText.textContent = currentBuilt.exps[selectedIdx];
+        optFollowup.classList.add('hidden');
       } else {
         fbBox.classList.add('bg-rose-950/70', 'border-rose-500/50', 'text-rose-100');
         fbIcon.textContent = '❌';
-        fbTitle.textContent = 'Error Costoso';
+        fbTitle.textContent = `Por qué falla la opción ${letters[selectedIdx]}:`;
+        fbText.textContent = currentBuilt.exps[selectedIdx];
+        
+        document.getElementById('optimal-letter').textContent = letters[currentBuilt.correct];
+        document.getElementById('optimal-text').textContent = currentBuilt.exps[currentBuilt.correct];
+        optFollowup.classList.remove('hidden');
       }
-      fbText.textContent = currentBuilt.exp;
     };
 
     // ==========================================
