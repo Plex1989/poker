@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>PokerLab Pro — Entrenador Avanzado de Decisiones & Mississippi</title>
+  <meta name="description" content="Simulador profesional configurable de Texas Hold'em No-Limit con ciegas editables, Mississippi Straddle y 3 niveles de dificultad." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #070b14;
+      color: #f8fafc;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .felt-surface {
+      background: radial-gradient(circle at 50% 25%, #0f4c35 0%, #082b1e 65%, #041911 100%);
+      box-shadow: inset 0 0 36px rgba(0, 0, 0, 0.7), 0 12px 30px -10px rgba(0, 0, 0, 0.8);
+    }
+    .playing-card {
+      background: linear-gradient(155deg, #ffffff 0%, #eef2f6 100%);
+      box-shadow: 0 6px 16px -3px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.35);
+      transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .playing-card:active {
+      transform: scale(0.96);
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-slide-up {
+      animation: slideUp 0.22s ease-out forwards;
+    }
+    /* Hide scrollbar for horizontal pill bars on mobile */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-emerald-500 selection:text-slate-950">
+
+  <!-- Sticky Mobile-First Top Bar -->
+  <header class="sticky top-0 z-50 bg-[#070b14]/95 backdrop-blur-md border-b border-slate-800/90">
+    <div class="max-w-3xl mx-auto px-3.5 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-black text-base shadow-md shadow-emerald-500/20">
+          ♠
+        </div>
+        <div>
+          <span class="font-extrabold tracking-tight text-white text-sm sm:text-base block leading-none">PokerLab <span class="text-emerald-400">PRO</span></span>
+          <span id="header-stakes-label" class="text-[10px] text-slate-400 font-medium">Ciegas $1/$2 • Miss. $10</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="toggle-config-btn" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition">
+          <span>⚙️</span>
+          <span>Mesa</span>
+        </button>
+        <a href="#simulador" class="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 text-xs font-bold transition">
+          Jugar
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero + Editable Table Configuration Panel -->
+  <section class="border-b border-slate-800/80 bg-gradient-to-b from-slate-900/50 to-transparent">
+    <div class="max-w-3xl mx-auto px-3.5 pt-6 pb-7">
+      <div class="text-center mb-6">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] font-semibold mb-3">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+          Entrenador Texas Hold'em 6-Max • Mississippi Activo
+        </span>
+        <h1 class="text-2xl sm:text-4xl font-black tracking-tight text-white mb-2 leading-tight">
+          Configura tu mesa y <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-300">entrena como Pro</span>
+        </h1>
+        <p class="text-slate-400 text-xs sm:text-sm max-w-xl mx-auto">
+          Ajusta las ciegas, el stack y el nivel de dificultad. Todos los botes y apuestas se adaptan automáticamente a tu partida.
+        </p>
+      </div>
+
+      <!-- Editable Config Card -->
+      <div id="config-panel" class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xl">
+        <div class="flex items-center justify-between mb-3.5">
+          <h2 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+            <span>🎛️</span> Parámetros de la Partida
+          </h2>
+          <span id="config-summary-pill" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+            100 BB Efectivas
+          </span>
+        </div>
+
+        <!-- Difficulty Selector (Levels 1, 2, 3) -->
+        <div class="mb-4">
+          <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+            Nivel de Dificultad
+          </label>
+          <div class="grid grid-cols-3 gap-2" id="level-selector">
+            <button type="button" data-level="1" class="lvl-btn p-2.5 rounded-xl border text-left transition active:scale-95 bg-slate-800/70 border-slate-700 text-slate-300">
+              <div class="text-xs font-extrabold text-white">Nivel 1</div>
+              <div class="text-[10px] opacity-80 leading-tight mt-0.5">Fundamentos y Rangos</div>
+            </button>
+            <button type="button" data-level="2" class="lvl-btn p-2.5 rounded-xl border text-left transition active:scale-95 bg-emerald-500/15 border-emerald-500 text-white">
+              <div class="text-xs font-extrabold text-emerald-400">Nivel 2</div>
+              <div class="text-[10px] text-emerald-100/90 leading-tight mt-0.5">Táctico y Mississippi</div>
+            </button>
+            <button type="button" data-level="3" class="lvl-btn p-2.5 rounded-xl border text-left transition active:scale-95 bg-slate-800/70 border-slate-700 text-slate-300">
+              <div class="text-xs font-extrabold text-amber-400">Nivel 3 🔥</div>
+              <div class="text-[10px] opacity-80 leading-tight mt-0.5">Pro: SPR, Blockers y GTO</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Blinds & Stack Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-3.5">
+          <div>
+            <label for="input-sb" class="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Ciega Chica ($)
+            </label>
+            <input id="input-sb" type="number" min="1" step="1" value="1"
+              class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold text-sm focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label for="input-bb" class="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Ciega Grande ($)
+            </label>
+            <input id="input-bb" type="number" min="2" step="1" value="2"
+              class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold text-sm focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label for="input-stack" class="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Entrada / Stack ($)
+            </label>
+            <input id="input-stack" type="number" min="20" step="10" value="200"
+              class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold text-sm focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label for="input-miss" class="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Mississippi ($)
+            </label>
+            <input id="input-miss" type="number" min="2" step="1" value="10"
+              class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-amber-300 font-bold text-sm focus:outline-none focus:border-amber-400" />
+          </div>
+        </div>
+
+        <!-- Quick Stakes Presets + Apply Button -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-slate-400 font-semibold mr-1">Rápido:</span>
+            <button type="button" onclick="applyPreset(1, 2, 200, 10)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 border border-slate-700">$1/$2</button>
+            <button type="button" onclick="applyPreset(2, 5, 500, 25)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 border border-slate-700">$2/$5</button>
+            <button type="button" onclick="applyPreset(5, 10, 1000, 50)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 border border-slate-700">$5/$10</button>
+          </div>
+          <button type="button" id="apply-config-btn" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-extrabold text-xs transition shadow-lg shadow-emerald-500/20">
+            Aplicar y Repartir Mano ♠
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Interactive Simulator -->
+  <main id="simulador" class="flex-1 max-w-3xl w-full mx-auto px-3.5 py-6">
+    
+    <!-- Compact Mobile Scoreboard -->
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 mb-4 shadow-lg">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-3.5 sm:gap-5">
+          <div>
+            <p class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Precisión</p>
+            <p id="stat-accuracy" class="text-lg sm:text-xl font-black text-emerald-400 leading-tight">0%</p>
+          </div>
+          <div class="h-7 w-px bg-slate-800"></div>
+          <div>
+            <p class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Aciertos</p>
+            <p class="text-lg sm:text-xl font-bold text-white leading-tight"><span id="stat-correct">0</span><span class="text-slate-500 text-xs">/<span id="stat-total">0</span></span></p>
+          </div>
+          <div class="h-7 w-px bg-slate-800"></div>
+          <div>
+            <p class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Racha</p>
+            <p id="stat-streak" class="text-lg sm:text-xl font-bold text-amber-400 leading-tight">0 🔥</p>
+          </div>
+        </div>
+
+        <div class="text-right">
+          <span id="level-badge-pill" class="block text-[10px] font-extrabold uppercase tracking-wider text-emerald-300 mb-0.5">
+            Nivel 2 • Táctico
+          </span>
+          <span id="deck-progress" class="inline-block px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 text-[11px] font-semibold">
+            Mano 1 de 12
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Poker Felt Table -->
+    <div class="felt-surface border-2 border-emerald-800/70 rounded-3xl p-4 sm:p-6 mb-4 relative overflow-hidden">
+      <!-- Top Chips / Position Bar -->
+      <div class="flex flex-wrap items-center justify-between gap-1.5 mb-4">
+        <span id="sc-badge" class="px-2.5 py-1 rounded-full bg-black/45 border border-emerald-400/30 text-emerald-300 text-[10px] sm:text-xs font-extrabold uppercase tracking-wide">
+          PREFLOP
+        </span>
+        <div class="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold">
+          <span id="sc-position" class="px-2.5 py-1 rounded-lg bg-black/45 text-slate-100 border border-white/10">
+            Asiento: Botón
+          </span>
+          <span id="sc-pot" class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/35">
+            Bote: $27
+          </span>
+        </div>
+      </div>
+
+      <!-- Board Cards -->
+      <div class="mb-5">
+        <p class="text-center text-[10px] uppercase tracking-widest text-emerald-200/70 font-bold mb-2">
+          Cartas en la Mesa (Board)
+        </p>
+        <div id="board-cards" class="flex items-center justify-center gap-1.5 sm:gap-2.5 min-h-[78px] sm:min-h-[92px]">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Hero Hand Box -->
+      <div class="bg-black/40 border border-white/10 rounded-2xl p-3.5 flex items-center justify-between gap-3">
+        <div class="min-w-0 flex-1">
+          <p class="text-[10px] uppercase tracking-wider text-emerald-300/85 font-bold mb-0.5">Tu Mano Actual</p>
+          <h2 id="evaluated-hand-title" class="text-sm sm:text-base font-extrabold text-white truncate">
+            Par de Ases (AA)
+          </h2>
+          <p id="evaluated-hand-sub" class="text-[11px] text-emerald-100/75 mt-0.5 truncate">
+            Stack: $200 (100 BB)
+          </p>
+        </div>
+        <div id="hero-cards" class="flex items-center justify-center gap-2 shrink-0">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Decision Prompt & Options -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+          <span>🎯</span> Toma tu decisión
+        </span>
+        <span id="sc-concept-tag" class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+          Concepto Pro
+        </span>
+      </div>
+      <p id="sc-question" class="text-sm sm:text-base font-semibold text-slate-100 leading-relaxed mb-4">
+        Cargando escenario...
+      </p>
+
+      <!-- 4 Multiple Choice Buttons -->
+      <div id="options-container" class="space-y-2.5">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Immediate Feedback Drawer -->
+      <div id="feedback-box" class="hidden mt-4 rounded-2xl p-4 border animate-slide-up">
+        <div class="flex items-start gap-2.5">
+          <div id="feedback-icon" class="text-lg sm:text-xl mt-0.5 shrink-0">✅</div>
+          <div class="flex-1">
+            <h3 id="feedback-title" class="font-extrabold text-sm sm:text-base mb-1">¡Jugada Óptima!</h3>
+            <p id="feedback-text" class="text-xs sm:text-sm leading-relaxed opacity-95"></p>
+          </div>
+        </div>
+        <div class="mt-4">
+          <button id="next-btn" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-extrabold text-sm transition shadow-lg shadow-emerald-500/20">
+            Siguiente Mano →
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-800/80 py-5 text-center text-[11px] text-slate-500 px-4">
+    PokerLab Pro • Simulador dinámico con escalado real de ciegas y reglas profesionales
+  </footer>
+
+  <script>
+    // ==========================================
+    // 1. CONFIGURACIÓN GLOBAL EDITABLE
+    // ==========================================
+    let config = {
+      sb: 1,
+      bb: 2,
+      stack: 200,
+      miss: 10,
+      level: 2
+    };
+
+    function fmt(amount) {
+      return '$' + Math.round(amount).toLocaleString('en-US');
+    }
+
+    // ==========================================
+    // 2. BARAJA Y EVALUADOR EXACTO DE MANOS
+    // ==========================================
+    const RANK_VALUES = {
+      '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8,
+      '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
+    };
+    const RANK_NAMES = {
+      '2': 'Doses', '3': 'Treses', '4': 'Cuatros', '5': 'Cincos', '6': 'Seises',
+      '7': 'Sietes', '8': 'Ochos', '9': 'Nueves', '10': 'Dieces',
+      'J': 'Jotos', 'Q': 'Quinas', 'K': 'Reyes', 'A': 'Ases'
+    };
+
+    class Deck {
+      constructor() {
+        this.used = new Set();
+      }
+      take(code) {
+        if (this.used.has(code)) {
+          throw new Error(`Carta duplicada detectada: ${code}`);
+        }
+        this.used.add(code);
+        const suit = code.slice(-1);
+        const rank = code.slice(0, -1);
+        return { code, rank, suit, val: RANK_VALUES[rank] };
+      }
+    }
+
+    function evaluateHand(hero, board) {
+      const all = [...hero, ...board];
+      const bbCount = Math.round(config.stack / config.bb);
+      const stackText = `Stack: ${fmt(config.stack)} (${bbCount} BB)`;
+
+      if (board.length === 0) {
+        const [c1, c2] = hero;
+        const suited = c1.suit === c2.suit ? 'del mismo palo' : 'de diferente palo';
+        if (c1.rank === c2.rank) {
+          return { title: `Par de ${RANK_NAMES[c1.rank]} (${c1.rank}${c2.rank})`, sub: stackText };
+        }
+        const high = c1.val >= c2.val ? c1 : c2;
+        const low = c1.val >= c2.val ? c2 : c1;
+        return { title: `${high.rank}-${low.rank} (${suited})`, sub: stackText };
+      }
+
+      const rankCounts = {};
+      const suitCounts = {};
+      all.forEach(c => {
+        rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1;
+        suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1;
+      });
+
+      const flushSuit = Object.keys(suitCounts).find(s => suitCounts[s] >= 5);
+      const groups = Object.entries(rankCounts)
+        .map(([rank, count]) => ({ rank, count, val: RANK_VALUES[rank] }))
+        .sort((a, b) => b.count - a.count || b.val - a.val);
+
+      const uniqueVals = [...new Set(all.map(c => c.val))].sort((a, b) => b - a);
+      if (uniqueVals.includes(14)) uniqueVals.push(1);
+      let hasStraight = false;
+      for (let i = 0; i <= uniqueVals.length - 5; i++) {
+        if (uniqueVals[i] - uniqueVals[i + 4] === 4) {
+          hasStraight = true;
+          break;
+        }
+      }
+
+      if (groups[0].count === 4) {
+        return { title: `Póker de ${RANK_NAMES[groups[0].rank]}`, sub: stackText };
+      }
+      if (groups[0].count === 3 && groups[1] && groups[1].count >= 2) {
+        return { title: `Full House (${RANK_NAMES[groups[0].rank]} con ${RANK_NAMES[groups[1].rank]})`, sub: stackText };
+      }
+      if (flushSuit) {
+        return { title: `Color Completo (${flushSuit})`, sub: stackText };
+      }
+      if (hasStraight) {
+        return { title: `Escalera (Corrida) Completa`, sub: stackText };
+      }
+      if (groups[0].count === 3) {
+        const isSet = hero[0].rank === hero[1].rank && hero[0].rank === groups[0].rank;
+        return {
+          title: `${isSet ? 'Trío Oculto (Set)' : 'Trío'} de ${RANK_NAMES[groups[0].rank]}`,
+          sub: stackText
+        };
+      }
+      if (groups[0].count === 2 && groups[1] && groups[1].count === 2) {
+        return {
+          title: `Doble Par (${RANK_NAMES[groups[0].rank]} y ${RANK_NAMES[groups[1].rank]})`,
+          sub: stackText
+        };
+      }
+      if (groups[0].count === 2) {
+        const pairRank = groups[0].rank;
+        const boardVals = board.map(c => c.val).sort((a, b) => b - a);
+        const pairVal = RANK_VALUES[pairRank];
+        let desc = `Par de ${RANK_NAMES[pairRank]}`;
+        if (hero[0].rank === hero[1].rank && pairVal > boardVals[0]) {
+          desc += ' (Overpair)';
+        } else if (pairVal === boardVals[0]) {
+          desc += ' (Par Mayor)';
+        } else if (pairVal < boardVals[0]) {
+          desc += ' (Par Medio/Bajo)';
+        }
+        return { title: desc, sub: stackText };
+      }
+
+      const heroHigh = hero[0].val >= hero[1].val ? hero[0] : hero[1];
+      return { title: `Carta Alta (${heroHigh.rank})`, sub: stackText };
+    }
+
+    // ==========================================
+    // 3. 36 ESCENARIOS DINÁMICOS (12 POR NIVEL)
+    // ==========================================
+    // Cada escenario usa una función build(c) donde c = { sb, bb, stack, miss }
+    const SCENARIO_TEMPLATES = [
+      // ---------------- NIVEL 1: FUNDAMENTOS ----------------
+      {
+        level: 1, street: 'PREFLOP', concept: 'Mano Trampa UTG', pos: 'UTG (Primero)',
+        hero: ['A♠', '7♦'], board: [],
+        build: (c) => ({
+          pot: fmt(c.sb + c.bb),
+          q: `Eres el primero en hablar después de la ciega grande (${fmt(c.bb)}). Nadie ha subido. Tienes A♠ 7♦.`,
+          opts: [
+            `Botarte (Fold) sin pagar ni ${fmt(c.bb)}.`,
+            `Pagar ${fmt(c.bb)} para ver si cae un As barato.`,
+            `Subir a ${fmt(c.bb * 6)} para representar un As fuerte.`,
+            `Subir a ${fmt(c.bb * 3)} para robar las ciegas.`
+          ],
+          correct: 0,
+          exp: `A-7 de diferente palo en primera posición es una "mano trampa". Faltan 4 jugadores por hablar y si sale un As te dominarán manos como A-K, A-Q o A-J.`
+        })
+      },
+      {
+        level: 1, street: 'PREFLOP', concept: 'Set Mining (Pares Chicos)', pos: 'MP (Media)',
+        hero: ['4♥', '4♣'], board: [],
+        build: (c) => ({
+          pot: fmt(c.sb + c.bb),
+          q: `Nadie ha subido aún y te reparten 4♥ 4♣ en posición media con stack de ${fmt(c.stack)}. ¿Qué haces?`,
+          opts: [
+            `Botarte porque es un par muy chico.`,
+            `Pagar ${fmt(c.bb)} (Limp) para buscar un trío oculto barato.`,
+            `Subir a ${fmt(c.bb * 12)} para llevarte las ciegas.`,
+            `Ir All-In por ${fmt(c.stack)}.`
+          ],
+          correct: 1,
+          exp: `Los pares chicos (2-2 a 7-7) valen ${fmt(c.bb)} para cazar un trío en el flop (12%). Si no cae el 4, los tiras sin dolor; si cae, les ganas la pila completa.`
+        })
+      },
+      {
+        level: 1, street: 'PREFLOP', concept: 'Aislar con Mano Monstruo', pos: 'Botón (BTN)',
+        hero: ['Q♠', 'Q♦'], board: [],
+        build: (c) => ({
+          pot: fmt(c.sb + c.bb * 3 + c.bb * 6),
+          q: `Dos amigos pagaron ${fmt(c.bb)} y el jugador antes que tú subió a ${fmt(c.bb * 6)}. Estás en el Botón con Q♠ Q♦.`,
+          opts: [
+            `Solo pagar ${fmt(c.bb * 6)} para esconder tu mano.`,
+            `Resubir fuerte (3-Bet) a ${fmt(c.bb * 18)}.`,
+            `Subir mínimo a ${fmt(c.bb * 7)}.`,
+            `Botarte por miedo a que alguien tenga AA o KK.`
+          ],
+          correct: 1,
+          exp: `Con Q-Q debes resubir a ${fmt(c.bb * 18)} para sacar a los jugadores con basura y quedarte mano a mano construyendo un bote grande con ventaja.`
+        })
+      },
+      {
+        level: 1, street: 'PREFLOP', concept: 'Conectores con Hueco', pos: 'CO (Antes del Botón)',
+        hero: ['6♥', '8♥'], board: [],
+        build: (c) => ({
+          pot: fmt(c.sb + c.bb + c.bb * 6),
+          q: `Un rival agresivo subió a ${fmt(c.bb * 6)} en primera posición y todos se botaron hasta ti. Tienes 6♥ 8♥.`,
+          opts: [
+            `Pagar ${fmt(c.bb * 6)} porque son del mismo palo.`,
+            `Botarte (Fold). Tienen hueco y es bote mano a mano.`,
+            `Resubir a ${fmt(c.bb * 15)} como blof.`,
+            `Pagar y apostar cualquier flop.`
+          ],
+          correct: 1,
+          exp: `6-8 del mismo palo tiene un hueco en medio (le falta el 7). Solo se paga si ya entraron 3 o 4 jugadores al bote en buena posición, nunca mano a mano.`
+        })
+      },
+      {
+        level: 1, street: 'POSTFLOP', concept: 'C-Bet en Mesa Seca', pos: 'Botón (BTN)',
+        hero: ['A♠', 'K♦'], board: ['Q♣', '7♥', '2♠'],
+        build: (c) => ({
+          pot: fmt(c.bb * 13),
+          q: `Subiste a ${fmt(c.bb * 6)} preflop con A♠ K♦ y pagó un rival. El flop cae Q♣ 7♥ 2♠ y tu rival pasa.`,
+          opts: [
+            `Pasar también porque no conectaste pareja.`,
+            `Apuesta de continuación (C-Bet) de ${fmt(c.bb * 7)}.`,
+            `Apostar ${fmt(c.bb * 30)} para asustarlo.`,
+            `Rendirse en cuanto te toque.`
+          ],
+          correct: 1,
+          exp: `Tu rival falló el flop el 66% de las veces. Como tú subiste preflop en mesa seca con carta alta (Q), una C-Bet de medio bote (${fmt(c.bb * 7)}) gana de inmediato muchas veces.`
+        })
+      },
+      {
+        level: 1, street: 'POSTFLOP', concept: 'Overpair en Mesa Baja', pos: 'CO (Antes del Botón)',
+        hero: ['9♠', '9♥'], board: ['7♦', '4♣', '2♠'],
+        build: (c) => ({
+          pot: fmt(c.bb * 13),
+          q: `Pagaste ${fmt(c.bb * 6)} preflop con 9♠ 9♥. El flop cae 7♦ 4♣ 2♠ (todas más bajas que tu par) y el rival pasa.`,
+          opts: [
+            `Pasar para controlar el bote porque no salió tu trío.`,
+            `Apostar fuerte (${fmt(c.bb * 9)}) porque tienes par máximo.`,
+            `Apostar ${fmt(c.bb * 2)} para ver qué hace.`,
+            `Botarte si te resube.`
+          ],
+          correct: 1,
+          exp: `Cuando tienes 8-8, 9-9 o 10-10 y caen puras cartas menores en el flop, tienes Overpair. Apuesta fuerte por valor contra tus amigos pagadores.`
+        })
+      },
+      {
+        level: 1, street: 'POSTFLOP', concept: 'Control con 1 Carta Alta', pos: 'Botón (BTN)',
+        hero: ['9♦', '9♣'], board: ['K♠', '6♥', '3♦'],
+        build: (c) => ({
+          pot: fmt(c.bb * 13),
+          q: `Tienes 9♦ 9♣ y el flop trae K♠ 6♥ 3♦ (una sola carta alta). Tu rival apuesta ${fmt(c.bb * 6)}.`,
+          opts: [
+            `Resubir a ${fmt(c.bb * 20)} para ver si tiene el Rey.`,
+            `Pagar una vez (${fmt(c.bb * 6)}) para controlar el bote.`,
+            `Botarte de inmediato.`,
+            `Ir All-In como semi-blof.`
+          ],
+          correct: 1,
+          exp: `Con una sola carta más alta en la mesa, pagas una apuesta mediana en el flop porque muchos rivales apuestan sin nada. Si vuelve a apostar fuerte en el turn, te botas.`
+        })
+      },
+      {
+        level: 1, street: 'POSTFLOP', concept: 'Par Medio vs 3 Cartas Altas', pos: 'MP (Media)',
+        hero: ['8♠', '8♦'], board: ['A♥', 'Q♣', '10♦'],
+        build: (c) => ({
+          pot: fmt(c.bb * 13),
+          q: `Tienes 8♠ 8♦ y el flop cae A♥ Q♣ 10♦. El jugador que subió preflop apuesta ${fmt(c.bb * 9)}.`,
+          opts: [
+            `Pagar porque un par de ochos es bueno.`,
+            `Botarte (Fold) de inmediato.`,
+            `Resubir a ${fmt(c.bb * 22)}.`,
+            `Pagar y esperar un 8 en el river.`
+          ],
+          correct: 1,
+          exp: `Con tres cartas altas (A-Q-10) por encima de tu par de ochos, tu mano perdió casi todo su valor contra un rango de subida preflop.`
+        })
+      },
+      {
+        level: 1, street: 'POSTFLOP', concept: 'Trío vs Proyecto de Color', pos: 'Botón (BTN)',
+        hero: ['7♣', '7♦'], board: ['Q♥', '7♥', '2♣'],
+        build: (c) => ({
+          pot: fmt(c.bb * 20),
+          q: `Ligaste Trío Oculto (Set) de sietes en flop Q♥ 7♥ 2♣ contra dos amigos pagadores. Ambos pasan hasta ti.`,
+          opts: [
+            `Pasar para tenderles una trampa y no asustarlos.`,
+            `Apostar fuerte (${fmt(c.bb * 16)}) por valor y protección.`,
+            `Apostar ${fmt(c.bb * 2)}.`,
+            `Esperar al river para apostar.`
+          ],
+          correct: 1,
+          exp: `Hay proyecto de color (dos corazones) y tus amigos pagan con cualquier Q o proyecto. Nunca pases esperando trampa: cobra caro de inmediato.`
+        })
+      },
+      {
+        level: 1, street: 'POSTFLOP', concept: 'No Blofear a Pagadores', pos: 'Botón (BTN)',
+        hero: ['9♥', '4♣'], board: ['K♠', '10♦', '8♠', '2♥'],
+        build: (c) => ({
+          pot: fmt(c.bb * 28),
+          q: `No tienes nada (9-4) en el turn contra el amigo de la mesa que NUNCA se bota y paga hasta con par de doses.`,
+          opts: [
+            `Apostar ${fmt(c.bb * 22)} para sacarlo de la mano.`,
+            `Pasar / Rendirse. Nunca blofees a un pagador.`,
+            `Ir All-In para que respete tu jugada.`,
+            `Apostar en turn y river.`
+          ],
+          correct: 1,
+          exp: `Regla de oro: nunca intentes blofear a alguien que no sabe retirarse. Guarda tus fichas para cuando sí tengas mano real.`
+        })
+      },
+      {
+        level: 1, street: 'OUTS', concept: 'Regla del 4 (Corrida Cerrada)', pos: 'Botón (BTN)',
+        hero: ['7♥', '8♥'], board: ['5♠', '9♦', 'K♣'],
+        build: (c) => ({
+          pot: fmt(c.bb * 15),
+          q: `Tienes 7♥ 8♥ en flop 5♠ 9♦ K♣ (solo te sirve cualquier 6 para corrida). ¿Cuántos outs y qué probabilidad tienes en el flop?`,
+          opts: [
+            `8 outs = 32% de probabilidad.`,
+            `4 outs = 16% de probabilidad (Regla del 4).`,
+            `4 outs = 8% de probabilidad.`,
+            `9 outs = 36% de probabilidad.`
+          ],
+          correct: 1,
+          exp: `Corrida cerrada (Gutshot): solo existen cuatro 6 en la baraja (4 outs). En el flop multiplicas 4 × 4 = 16% de probabilidad.`
+        })
+      },
+      {
+        level: 1, street: 'OUTS', concept: 'Regla del 2 en el Turn', pos: 'MP (Media)',
+        hero: ['7♠', '8♠'], board: ['5♦', '9♣', 'K♥', '2♦'],
+        build: (c) => ({
+          pot: fmt(c.bb * 30),
+          q: `Sigues buscando el 6 para tu corrida cerrada, pero ya estás en el Turn (falta 1 carta). Tu rival apuesta ${fmt(c.bb * 25)}.`,
+          opts: [
+            `Pagar los ${fmt(c.bb * 25)} porque casi sale.`,
+            `Botarte (Fold). Solo tienes 8% de probabilidad (4 outs × 2).`,
+            `Resubir All-In.`,
+            `Pagar porque tienes 16%.`
+          ],
+          correct: 1,
+          exp: `En el turn multiplicas por 2: 4 outs × 2 = 8% (1 de cada 12 veces). Pagar ${fmt(c.bb * 25)} en un bote de ${fmt(c.bb * 30)} es un error matemático grave.`
+        })
+      },
+
+      // ---------------- NIVEL 2: TÁCTICO Y MISSISSIPPI ----------------
+      {
+        level: 2, street: 'MISSISSIPPI', concept: 'Mississippi con Q-J Offsuit', pos: 'Botón (Mississippi)',
+        hero: ['Q♣', 'J♦'], board: [],
+        build: (c) => ({
+          pot: fmt(c.miss * 5 + c.sb + c.bb),
+          q: `Pusiste Mississippi de ${fmt(c.miss)} en el Botón. Cuatro amigos igualaron ${fmt(c.miss)} y te llega la opción con Q♣ J♦.`,
+          opts: [
+            `Subir fuerte a ${fmt(c.miss * 4.5)} porque tienes figuras.`,
+            `Pasar (Check) para ver el flop gratis con posición.`,
+            `Ir All-In por ${fmt(c.stack)}.`,
+            `Subir mínimo a ${fmt(c.miss * 2)}.`
+          ],
+          correct: 1,
+          exp: `Q-J de diferente palo no es mano monstruo. Ya tienes la mejor posición de la mesa y 4 rivales dentro; pasar te permite ver el flop gratis sin inflar el bote dominado.`
+        })
+      },
+      {
+        level: 2, street: 'MISSISSIPPI', concept: 'Mississippi con Mano Monstruo', pos: 'Botón (Mississippi)',
+        hero: ['K♠', 'K♥'], board: [],
+        build: (c) => ({
+          pot: fmt(c.miss * 5 + c.sb + c.bb),
+          q: `Pusiste Mississippi de ${fmt(c.miss)} en el Botón. Cuatro jugadores igualaron ${fmt(c.miss)} y te toca hablar con K♠ K♥.`,
+          opts: [
+            `Pasar (Check) para tender una trampa a los 4.`,
+            `Subir fuerte a ${fmt(c.miss * 4.5)}.`,
+            `Subir solo a ${fmt(c.miss * 2)} para que nadie se vaya.`,
+            `Ir All-In directo.`
+          ],
+          correct: 1,
+          exp: `Nunca escondas Reyes contra 4 rivales. Con tanto dinero muerto en el centro, sube a ${fmt(c.miss * 4.5)} para sacar manos basura que puedan ligar doble par.`
+        })
+      },
+      {
+        level: 2, street: 'MISSISSIPPI', concept: 'Posición del Mississippi', pos: 'UTG (Primera)',
+        hero: ['8♦', '5♣'], board: [],
+        build: (c) => ({
+          pot: fmt(c.sb + c.bb),
+          q: `Tus amigos preguntan si quieres poner Mississippi de ${fmt(c.miss)} cuando te toca hablar primero después de las ciegas.`,
+          opts: [
+            `Sí, siempre conviene poner Mississippi en cualquier asiento.`,
+            `No. El Mississippi solo conviene ponerlo en el Botón.`,
+            `Sí, pero solo si tienes más de ${fmt(c.stack)}.`,
+            `Sí, para obligarlos a apostar.`
+          ],
+          correct: 1,
+          exp: `Poner ${fmt(c.miss)} a ciegas en primeras posiciones te obliga a jugar toda la mano fuera de posición. Solo pon Mississippi en el Botón, donde hablas al último postflop.`
+        })
+      },
+      {
+        level: 2, street: 'PREFLOP', concept: 'Squeeze Play en Ciega', pos: 'Ciega Grande (BB)',
+        hero: ['A♦', 'J♦'], board: [],
+        build: (c) => ({
+          pot: fmt(c.bb * 19),
+          q: `Subieron a ${fmt(c.bb * 6)} y dos amigos pagaron ${fmt(c.bb * 6)}. Estás en la Ciega Grande con A♦ J♦.`,
+          opts: [
+            `Solo pagar ${fmt(c.bb * 5)} más para ver el flop barato.`,
+            `Hacer un Squeeze (resubir) a ${fmt(c.bb * 22)}.`,
+            `Botarte porque J es carta débil.`,
+            `Pagar y pasar en cualquier flop.`
+          ],
+          correct: 1,
+          exp: `Con A♦ J♦ y tanto dinero muerto de jugadores que suelen pagar con cartas débiles, resubir a ${fmt(c.bb * 22)} toma el control y limpia la mesa.`
+        })
+      },
+      {
+        level: 2, street: 'PREFLOP', concept: 'Suited Connectors en BTN', pos: 'Botón (BTN)',
+        hero: ['9♠', '8♠'], board: [],
+        build: (c) => ({
+          pot: fmt(c.bb * 19.5),
+          q: `Un jugador subió a ${fmt(c.bb * 6)} y otros dos pagaron ${fmt(c.bb * 6)}. Estás en el Botón con 9♠ 8♠.`,
+          opts: [
+            `Pagar ${fmt(c.bb * 6)} en excelente posición.`,
+            `Botarte porque son cartas chicas.`,
+            `Resubir a ${fmt(c.bb * 25)}.`,
+            `Ir All-In por ${fmt(c.stack)}.`
+          ],
+          correct: 0,
+          exp: `Se cumplen las 3 condiciones: conectores seguidos del mismo palo, posición de Botón y bote multi-jugador que te paga muy bien si conectas.`
+        })
+      },
+      {
+        level: 2, street: 'OUTS', concept: 'Semi-Blof con Proyecto Color', pos: 'Botón (BTN)',
+        hero: ['A♠', '10♠'], board: ['K♠', '6♠', '2♦'],
+        build: (c) => ({
+          pot: fmt(c.bb * 16),
+          q: `Tienes proyecto de color máximo (A♠ 10♠ en flop K♠ 6♠ 2♦). Tu rival apuesta ${fmt(c.bb * 8)} en el flop.`,
+          opts: [
+            `Botarte porque aún no tienes pareja.`,
+            `Subir fuerte (Semi-Blof) a ${fmt(c.bb * 24)} o pagar con 36% de equidad.`,
+            `Botarte si no sale en el turn.`,
+            `Pagar solo si el bote es gigante.`
+          ],
+          correct: 1,
+          exp: `Tienes 9 outs de picas (9 × 4 = 36% en el flop) más 3 Ases. Hacer Semi-Blof subiendo te da dos formas de ganar: que se tire ya o ligar tu color.`
+        })
+      },
+      {
+        level: 2, street: 'OUTS', concept: 'Monster Draw (15 Outs)', pos: 'CO (Antes del Botón)',
+        hero: ['7♠', '8♠'], board: ['9♠', '10♠', '2♣'],
+        build: (c) => ({
+          pot: fmt(c.bb * 18),
+          q: `Tienes 7♠ 8♠ y el flop cae 9♠ 10♠ 2♣ (proyecto de color + corrida abierta). Un rival apuesta ${fmt(c.bb * 12)}.`,
+          opts: [
+            `Solo pagar con miedo.`,
+            `Resubir fuerte / Ir con todo. Tienes 15 outs (~60% favorito).`,
+            `Botarte porque no tienes pareja.`,
+            `Esperar al river para ver si cae.`
+          ],
+          correct: 1,
+          exp: `Con 9 cartas de color + 6 cartas de corrida (15 outs × 4 = 60%), eres matemáticamente favorito incluso contra alguien que ya tenga par de Ases.`
+        })
+      },
+      {
+        level: 2, street: 'OUTS', concept: 'Pot Odds en el Turn', pos: 'Botón (BTN)',
+        hero: ['K♦', 'Q♦'], board: ['A♦', '7♦', '2♣', '9♠'],
+        build: (c) => ({
+          pot: fmt(c.bb * 50),
+          q: `Estás en el Turn con proyecto de color (9 outs = 18%). El bote es de ${fmt(c.bb * 50)} y tu rival apuesta solo ${fmt(c.bb * 7)}.`,
+          opts: [
+            `Botarte porque 18% es poco.`,
+            `Pagar los ${fmt(c.bb * 7)}. Arriesgas poco para ganar ${fmt(c.bb * 57)} (excelente precio).`,
+            `Subir a ${fmt(c.bb * 75)}.`,
+            `Botarte si no tienes par.`
+          ],
+          correct: 1,
+          exp: `Aunque tu probabilidad sea 18% (1 de cada 5.5 veces), pagar ${fmt(c.bb * 7)} para ganar ${fmt(c.bb * 57)} te da más de 8 a 1 en precio (Pot Odds). Es muy rentable.`
+        })
+      },
+      {
+        level: 2, street: 'POSTFLOP', concept: 'Segundo Barril vs Par Alto', pos: 'Botón (BTN)',
+        hero: ['J♠', 'J♥'], board: ['A♦', '8♣', '3♠'],
+        build: (c) => ({
+          pot: fmt(c.bb * 25),
+          q: `Tienes J♠ J♥. El flop cae A♦ 8♣ 3♠. Pagaste ${fmt(c.bb * 7)} en el flop y en el turn cae 5♥. Tu rival apuesta ${fmt(c.bb * 18)} fuertes.`,
+          opts: [
+            `Pagar los ${fmt(c.bb * 18)} porque J-J es muy fuerte.`,
+            `Botarte (Fold). La segunda apuesta fuerte confirma el As.`,
+            `Resubir a ${fmt(c.bb * 45)}.`,
+            `Ir All-In.`
+          ],
+          correct: 1,
+          exp: `Control de bote cumplido: pagaste una calle por si era C-Bet sin nada, pero un segundo barril fuerte en mesa con As indica que vas perdiendo contra A-X.`
+        })
+      },
+      {
+        level: 2, street: 'POSTFLOP', concept: 'Kicker Débil en Mesa con As', pos: 'Ciega Grande (BB)',
+        hero: ['A♠', '6♦'], board: ['A♣', 'K♥', '8♠'],
+        build: (c) => ({
+          pot: fmt(c.bb * 10),
+          q: `Entraste barato en la ciega con A♠ 6♦. El flop cae A♣ K♥ 8♠ y tu rival que subió preflop apuesta fuerte y te resube.`,
+          opts: [
+            `Ir All-In porque tienes par de Ases.`,
+            `Jugar con cautela y botarte ante mucha agresión (mal kicker).`,
+            `Resubir más fuerte todavía.`,
+            `Pagar todo hasta el river.`
+          ],
+          correct: 1,
+          exp: `Tu acompañante (6) es muy bajo. Ante mucha acción en mesa A-K-8, tu rival casi siempre tiene A-K, A-Q, A-J o trío.`
+        })
+      },
+      {
+        level: 2, street: 'POSTFLOP', concept: 'Thin Value en el River', pos: 'Botón (BTN)',
+        hero: ['A♦', 'Q♦'], board: ['Q♠', '9♥', '4♣', '2♦', '7♠'],
+        build: (c) => ({
+          pot: fmt(c.bb * 40),
+          q: `En el River tienes Par Mayor con buen acompañante (A-Q en mesa Q-9-4-2-7). Tu rival pagador pasa.`,
+          opts: [
+            `Pasar por miedo a que tenga trío.`,
+            `Apuesta de valor (Thin Value) de ${fmt(c.bb * 22)}.`,
+            `Apostar ${fmt(c.bb * 2)}.`,
+            `Ir All-In por ${fmt(c.stack * 0.8)}.`
+          ],
+          correct: 1,
+          exp: `Contra rivales que pagan de más, pasar aquí deja dinero en la mesa. Te van a pagar manos peores como K-Q, Q-J, Q-10 o un 9.`
+        })
+      },
+      {
+        level: 2, street: 'PREFLOP', concept: 'Robo en Posición con A-9o', pos: 'CO (Antes del Botón)',
+        hero: ['A♣', '9♦'], board: [],
+        build: (c) => ({
+          pot: fmt(c.sb + c.bb),
+          q: `Nadie ha subido (la apuesta sigue en ${fmt(c.bb)}) y estás en buena posición (CO) con A♣ 9♦.`,
+          opts: [
+            `Botarte porque A-9 offsuit nunca se juega.`,
+            `Subir tú a ${fmt(c.bb * 5)} para tomar la iniciativa.`,
+            `Pagar ${fmt(c.sb)}.`,
+            `Ir All-In.`
+          ],
+          correct: 1,
+          exp: `A-9 offsuit se bota cuando alguien ya subió antes que tú. Pero si nadie subió y estás en últimas posiciones, sube tú a ${fmt(c.bb * 5)} para robar ciegas o jugar con iniciativa.`
+        })
+      },
+
+      // ---------------- NIVEL 3: PRO / AVANZADO ----------------
+      {
+        level: 3, street: 'POSTFLOP', concept: 'SPR Bajo (Compromiso con Overpair)', pos: 'Botón (BTN)',
+        hero: ['K♦', 'K♣'], board: ['10♠', '8♥', '4♦'],
+        build: (c) => {
+          const pot = c.bb * 36;
+          const rem = Math.max(c.bb * 50, c.stack - c.bb * 18);
+          return {
+            pot: fmt(pot),
+            q: `En bote 3-Bet (${fmt(pot)}), te queda ${fmt(rem)} atrás (SPR ~1.5). Flop 10♠ 8♥ 4♦. El rival en BB te apuesta de cara ${fmt(pot * 0.5)} (Donk Bet).`,
+            opts: [
+              `Solo pagar para ver si sale un As o Jota en el turn.`,
+              `Subir All-In (${fmt(rem)}) de inmediato por valor y protección.`,
+              `Botarte por miedo a que tenga trío de dieces.`,
+              `Hacer min-raise a ${fmt(pot)}.`
+            ],
+            correct: 1,
+            exp: `Con SPR bajo (~1.5) y Overpair (K-K) en mesa coordinada (10-8-4), estás matemáticamente comprometido. Ir All-In en el flop cobra el máximo a A-10, Q-J, 9-9 y proyectos de escalera antes de que caigan cartas que maten la acción.`
+          };
+        }
+      },
+      {
+        level: 3, street: 'POSTFLOP', concept: 'Blocker al Color Máximo (River Bluff)', pos: 'Botón (BTN)',
+        hero: ['A♥', '5♣'], board: ['K♥', '9♥', '4♠', '2♦', '7♥'],
+        build: (c) => {
+          const pot = c.bb * 45;
+          return {
+            pot: fmt(pot),
+            q: `River 7♥ completa el tercer corazón. Tu rival pasa mostrando debilidad tras pagar flop y turn. Tienes A♥ 5♣ (tienes el As de corazones como blocker).`,
+            opts: [
+              `Pasar y rendirte porque solo tienes carta alta As.`,
+              `Apostar fuerte (${fmt(pot * 0.8)}) representando el color máximo.`,
+              `Apostar mínimo (${fmt(c.bb * 3)}) a ver si se tira.`,
+              `Pasar porque los rivales nunca tiran parejas.`
+            ],
+            correct: 1,
+            exp: `Concepto Pro (Blockers): al tener el A♥ en tu mano, es imposible que tu rival tenga el color máximo (Nut Flush). Una apuesta polarizada grande (${fmt(pot * 0.8)}) presiona enormemente a manos medias como K-Q o Q-J sin corazones.`
+          };
+        }
+      },
+      {
+        level: 3, street: 'POSTFLOP', concept: 'Reverse Implied Odds (Color Bajo)', pos: 'CO (Antes del Botón)',
+        hero: ['5♠', '6♠'], board: ['A♠', 'K♠', '9♠', '2♦', 'Q♣'],
+        build: (c) => {
+          const pot = c.bb * 55;
+          return {
+            pot: fmt(pot),
+            q: `Tienes color al 6 (5♠ 6♠) en mesa A♠ K♠ 9♠ 2♦ Q♣. Tu rival tight-pasivo, que casi nunca blofea, te resube fuerte en el river a ${fmt(pot * 1.2)}.`,
+            opts: [
+              `Ir All-In porque tienes color y el color siempre gana.`,
+              `Botarte (Fold disciplinado). Su rango de subida en el river tiene colores mayores (Q♠, J♠, 10♠).`,
+              `Pagar solo por curiosidad.`,
+              `Resubir al doble.`
+            ],
+            correct: 1,
+            exp: `Probabilidades implícitas inversas: cuando un jugador pasivo resube fuerte en una mesa con 3 picas altas (A-K-9), nunca lo hace con peor mano que tu color al 6. Tirar un color bajo aquí ahorra decenas de ciegas.`
+          };
+        }
+      },
+      {
+        level: 3, street: 'POSTFLOP', concept: 'Check-Raise Semi-Blof en Turn', pos: 'Ciega Grande (BB)',
+        hero: ['8♣', '7♣'], board: ['9♦', '6♥', '2♣', 'K♣'],
+        build: (c) => {
+          const pot = c.bb * 22;
+          return {
+            pot: fmt(pot),
+            q: `Defendiste BB con 8♣ 7♣. Flop 9♦ 6♥ 2♣ (corrida abierta). Turn cae K♣ (ahora tienes corrida abierta + proyecto de color = 15 outs). Rival apuesta ${fmt(c.bb * 14)}.`,
+            opts: [
+              `Solo pagar ${fmt(c.bb * 14)} para no arriesgar más.`,
+              `Hacer Check-Raise fuerte a ${fmt(c.bb * 44)} (Semi-Blof de alta equidad).`,
+              `Botarte porque salió un Rey.`,
+              `Pagar y botarte si no cae en el river.`
+            ],
+            correct: 1,
+            exp: `El Rey es una carta perfecta para representar que ligaste doble par o trío, y tienes 15 outs reales (~34% incluso si te pagan). El Check-Raise maximiza tu Fold Equity y construye un bote gigante.`
+          };
+        }
+      },
+      {
+        level: 3, street: 'OUTS', concept: 'Descuento de Outs Sucios', pos: 'MP (Media)',
+        hero: ['5♥', '6♥'], board: ['K♥', '9♥', '9♠', '2♣'],
+        build: (c) => {
+          const pot = c.bb * 40;
+          return {
+            pot: fmt(pot),
+            q: `Tienes proyecto de color al 6 (5♥ 6♥) en mesa emparejada (K♥ 9♥ 9♠ 2♣). Tu rival apuesta ${fmt(pot * 0.9)} en el turn.`,
+            opts: [
+              `Pagar porque tienes 9 outs limpios (18%) y te da el precio.`,
+              `Botarte (Fold). Tus outs están sucios: la mesa está emparejada (posible Full House) y tienes color bajo.`,
+              `Resubir All-In.`,
+              `Pagar y subir cualquier corazón en el river.`
+            ],
+            correct: 1,
+            exp: `En mesa emparejada (dos 9s), cartas como el K♥ o 2♥ completan tu color pero le dan Full House al rival, además de poder perder contra un corazón más alto. Tus outs reales son mucho menores a 9.`
+          };
+        }
+      },
+      {
+        level: 3, street: 'MISSISSIPPI', concept: 'Aislar Limpers desde SB vs Mississippi', pos: 'Ciega Chica (SB)',
+        hero: ['A♠', 'Q♠'], board: [],
+        build: (c) => {
+          const pot = c.miss * 4 + c.sb + c.bb;
+          return {
+            pot: fmt(pot),
+            q: `El Botón puso Mississippi de ${fmt(c.miss)} y tres jugadores igualaron ${fmt(c.miss)}. Estás en la Ciega Chica (fuera de posición toda la mano) con A♠ Q♠.`,
+            opts: [
+              `Completar ${fmt(c.miss - c.sb)} para ver un flop barato contra 4 rivales.`,
+              `Subir fuerte (Squeeze) a ${fmt(c.miss * 4.5)} para aislar y evitar jugar multiway sin posición.`,
+              `Botarte porque A-Q no es par.`,
+              `Subir mínimo a ${fmt(c.miss * 2)}.`
+            ],
+            correct: 1,
+            exp: `Jugar A♠ Q♠ fuera de posición (SB) contra 4 rivales en bote multiway es muy difícil de rentabilizar. Subir fuerte a ${fmt(c.miss * 4.5)} captura el dinero muerto y aísla a 1 rival.`
+          };
+        }
+      },
+      {
+        level: 3, street: 'POSTFLOP', concept: 'Overbet Polarizado en el River', pos: 'Botón (BTN)',
+        hero: ['9♠', '9♦'], board: ['9♣', '6♠', '2♥', '3♦', 'A♣'],
+        build: (c) => {
+          const pot = c.bb * 42;
+          return {
+            pot: fmt(pot),
+            q: `Tienes Trío de Nueves (Set) en mesa 9♣ 6♠ 2♥ 3♦ A♣. El As en el river completa muchas parejas máximas de tus rivales pagadores. Tu rival pasa.`,
+            opts: [
+              `Apostar pequeño (${fmt(pot * 0.3)}) para asegurar que pague.`,
+              `Hacer Overbet (${fmt(pot * 1.25)}) por valor máximo contra A-X.`,
+              `Pasar por miedo a que tenga 4-5 para escalera.`,
+              `Apostar medio bote.`
+            ],
+            correct: 1,
+            exp: `Cuando cae un As en el river y sabes que tu rival es pagador con cualquier As (A-K, A-Q, A-J, A-10), una Overbet (${fmt(pot * 1.25)}) extrae muchísimo más valor que una apuesta estándar porque los pagadores no tiran Top Pair.`
+          };
+        }
+      },
+      {
+        level: 3, street: 'PREFLOP', concept: '4-Bet / Fold vs 3-Bet Tight', pos: 'CO (Antes del Botón)',
+        hero: ['A♦', 'K♣'], board: [],
+        build: (c) => {
+          const open = c.bb * 5;
+          const threeBet = c.bb * 16;
+          return {
+            pot: fmt(open + threeBet + c.sb + c.bb),
+            q: `Abriste a ${fmt(open)} con A♦ K♣ y el Botón resube a ${fmt(threeBet)}. Ambos tienen ${fmt(c.stack)} (100 BB). ¿Cuál es la línea óptima?`,
+            opts: [
+              `Botarte porque A-K no tiene pareja hecha.`,
+              `Hacer 4-Bet a ${fmt(c.bb * 38)} (o pagar en posición) para mantener la iniciativa.`,
+              `Ir All-In directo por ${fmt(c.stack)} (100 BB).`,
+              `Hacer min-click a ${fmt(c.bb * 27)}.`
+            ],
+            correct: 1,
+            exp: `Con 100 BB de profundidad, ir All-In directo con A-K solo logra que te paguen AA y KK. Un 4-Bet medido a ${fmt(c.bb * 38)} extrae valor de manos peores (A-Q, J-J, 10-10) y bloquea combinaciones de AA/KK.`
+          };
+        }
+      },
+      {
+        level: 3, street: 'POSTFLOP', concept: 'Hero Call por Bloqueadores', pos: 'Botón (BTN)',
+        hero: ['K♠', 'J♣'], board: ['K♦', '10♦', '4♠', '2♣', '8♥'],
+        build: (c) => {
+          const pot = c.bb * 50;
+          return {
+            pot: fmt(pot),
+            q: `Tienes Par Mayor (K-J) en mesa seca sin color ni escalera completada (K♦ 10♦ 4♠ 2♣ 8♥). El rival agresivo falla su proyecto de diamantes y mete ${fmt(pot * 0.75)} en el river.`,
+            opts: [
+              `Botarte porque seguramente tiene A-K o trío.`,
+              `Pagar (Bluff Catcher). Bloqueas K-J/Q-J y todos los proyectos de diamantes fallaron.`,
+              `Resubir All-In como blof.`,
+              `Botarte siempre que apuesten fuerte en el river.`
+            ],
+            correct: 1,
+            exp: `En el river todos los proyectos de color (diamantes) y escalera (Q-J, J-9) fallaron. Tu K-J bloquea manos de valor como K-J y escaleras con J, convirtiéndolo en el Bluff Catcher ideal contra un rival agresivo.`
+          };
+        }
+      },
+      {
+        level: 3, street: 'POSTFLOP', concept: 'Float en Posición (Flop Seco)', pos: 'Botón (BTN)',
+        hero: ['A♦', '10♦'], board: ['8♣', '5♥', '2♠'],
+        build: (c) => {
+          const pot = c.bb * 13;
+          return {
+            pot: fmt(pot),
+            q: `Pagaste en posición con A♦ 10♦. Flop 8♣ 5♥ 2♠. El agresor preflop hace una C-Bet pequeña de ${fmt(c.bb * 4)} (1/3 del bote).`,
+            opts: [
+              `Botarte porque no ligaste pareja.`,
+              `Pagar en posición (Float) con dos overcards, backdoor flush y posición.`,
+              `Resubir a ${fmt(c.bb * 25)}.`,
+              `Ir All-In.`
+            ],
+            correct: 1,
+            exp: `Ante una C-Bet pequeña (1/3 del bote) en mesa baja, tu mano A♦ 10♦ tiene 6 outs limpios de overcards (A y 10) más proyecto trasero de color y posición para robar el bote si el rival frena en el turn.`
+          };
+        }
+      },
+      {
+        level: 3, street: 'POSTFLOP', concept: 'Fold Disciplinado con Overpair', pos: 'MP (Media)',
+        hero: ['A♠', 'A♥'], board: ['9♣', '8♣', '7♦', '6♠'],
+        build: (c) => {
+          const pot = c.bb * 48;
+          return {
+            pot: fmt(pot),
+            q: `Tienes Par de Ases (A♠ A♥). El turn completa 4 cartas seguidas de escalera (9♣ 8♣ 7♦ 6♠) y el rival pasivo te apuesta All-In por ${fmt(c.bb * 70)}.`,
+            opts: [
+              `Pagar porque nunca se tiran Ases.`,
+              `Botarte (Hero Fold). Cualquier 10 o 5 tiene escalera y un pasivo no blofea All-In aquí.`,
+              `Pagar esperando un As en el river.`,
+              `Llamar tiempo y pagar.`
+            ],
+            correct: 1,
+            exp: `En mesa 9-8-7-6 (4-liner a escalera), un solo par de Ases sin ningún club ni escalera está muerto contra el rango de All-In de un jugador pasivo. Saber soltar AA en texturas letales distingue a los ganadores.`
+          };
+        }
+      },
+      {
+        level: 3, street: 'MISSISSIPPI', concept: 'Defensa vs Squeeze tras Mississippi', pos: 'CO (Antes del Botón)',
+        hero: ['10♠', '10♦'], board: [],
+        build: (c) => {
+          const squeeze = c.miss * 4.5;
+          return {
+            pot: fmt(c.miss * 3 + squeeze + c.sb + c.bb),
+            q: `Botón puso Mississippi (${fmt(c.miss)}), tú subiste a ${fmt(c.miss * 2.5)} con 10♠ 10♦, dos pagaron y la Ciega Grande hace Squeeze fuerte a ${fmt(squeeze)}.`,
+            opts: [
+              `Ir All-In por ${fmt(c.stack)} con 10-10.`,
+              `Pagar ${fmt(squeeze - c.miss * 2.5)} para jugar en posición con set-mining y par alto.`,
+              `Botarte de inmediato.`,
+              `Hacer min-raise.`
+            ],
+            correct: 1,
+            exp: `Ir All-In con 10-10 aísla solo contra manos que te dominan (JJ-AA, AK). Pagar en posición mantiene sus blofs en el bote y te permite evaluar el flop con ventaja posicional.`
+          };
+        }
+      }
+    ];
+
+    // ==========================================
+    // 4. ESTADO DEL SIMULADOR Y SHUFFLE BAG
+    // ==========================================
+    let bag = [];
+    let bagIndex = 0;
+    let currentTemplate = null;
+    let currentBuilt = null;
+    let answered = false;
+
+    let stats = {
+      correct: 0,
+      total: 0,
+      streak: 0
+    };
+
+    const LEVEL_LABELS = {
+      1: 'Nivel 1 • Fundamentos',
+      2: 'Nivel 2 • Táctico',
+      3: 'Nivel 3 • Pro 🔥'
+    };
+
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function refillBag() {
+      const pool = SCENARIO_TEMPLATES.filter(s => s.level === config.level);
+      bag = shuffleArray(pool);
+      bagIndex = 0;
+    }
+
+    function renderCardHTML(cardObj) {
+      const isRed = cardObj.suit === '♥' || cardObj.suit === '♦';
+      const colorClass = isRed ? 'text-rose-600' : 'text-slate-900';
+      return `
+        <div class="playing-card w-12 h-17 sm:w-15 sm:h-22 rounded-xl flex flex-col justify-between p-1.5 sm:p-2 select-none border border-slate-300" style="min-height: 74px;">
+          <div class="text-left leading-none font-black text-xs sm:text-sm ${colorClass}">
+            ${cardObj.rank}<span class="block text-[10px] sm:text-xs">${cardObj.suit}</span>
+          </div>
+          <div class="text-center text-lg sm:text-xl leading-none ${colorClass}">
+            ${cardObj.suit}
+          </div>
+          <div class="text-right leading-none font-black text-xs sm:text-sm ${colorClass} rotate-180">
+            ${cardObj.rank}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderEmptyCardHTML() {
+      return `
+        <div class="w-12 sm:w-15 rounded-xl border-2 border-dashed border-emerald-400/25 bg-black/25 flex items-center justify-center text-emerald-400/30 text-xs font-bold" style="min-height: 74px;">
+          ?
+        </div>
+      `;
+    }
+
+    function loadNextScenario() {
+      if (bagIndex >= bag.length) {
+        refillBag();
+      }
+      currentTemplate = bag[bagIndex];
+      bagIndex++;
+      answered = false;
+
+      // Construir textos y valores escalados a la configuración actual
+      currentBuilt = currentTemplate.build(config);
+
+      // Verificar cartas únicas
+      const deck = new Deck();
+      const heroObjs = currentTemplate.hero.map(c => deck.take(c));
+      const boardObjs = currentTemplate.board.map(c => deck.take(c));
+      const evalResult = evaluateHand(heroObjs, boardObjs);
+
+      // Actualizar interfaz
+      document.getElementById('level-badge-pill').textContent = LEVEL_LABELS[config.level];
+      document.getElementById('deck-progress').textContent = `Mano ${bagIndex} de ${bag.length}`;
+      document.getElementById('sc-badge').textContent = currentTemplate.street;
+      document.getElementById('sc-position').textContent = `Asiento: ${currentTemplate.pos}`;
+      document.getElementById('sc-pot').textContent = `Bote: ${currentBuilt.pot}`;
+      document.getElementById('sc-concept-tag').textContent = currentTemplate.concept;
+      document.getElementById('sc-question').textContent = currentBuilt.q;
+
+      document.getElementById('evaluated-hand-title').textContent = evalResult.title;
+      document.getElementById('evaluated-hand-sub').textContent = evalResult.sub;
+
+      document.getElementById('hero-cards').innerHTML = heroObjs.map(renderCardHTML).join('');
+
+      const boardContainer = document.getElementById('board-cards');
+      if (boardObjs.length === 0) {
+        boardContainer.innerHTML = [1, 2, 3].map(renderEmptyCardHTML).join('');
+      } else {
+        boardContainer.innerHTML = boardObjs.map(renderCardHTML).join('');
+      }
+
+      const letters = ['A', 'B', 'C', 'D'];
+      const optionsContainer = document.getElementById('options-container');
+      optionsContainer.innerHTML = currentBuilt.opts.map((opt, idx) => `
+        <button
+          onclick="handleAnswer(${idx})"
+          class="opt-btn w-full text-left p-3 sm:p-3.5 rounded-xl bg-slate-800/85 hover:bg-slate-800 active:scale-[0.99] border border-slate-700/90 transition flex items-start gap-3 group"
+        >
+          <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-700 group-hover:bg-emerald-500 group-hover:text-slate-950 text-slate-200 font-extrabold text-xs flex items-center justify-center shrink-0 transition mt-0.5">
+            ${letters[idx]}
+          </span>
+          <span class="text-xs sm:text-sm text-slate-100 font-medium leading-snug">${opt}</span>
+        </button>
+      `).join('');
+
+      document.getElementById('feedback-box').classList.add('hidden');
+    }
+
+    window.handleAnswer = function(selectedIdx) {
+      if (answered) return;
+      answered = true;
+
+      const isCorrect = selectedIdx === currentBuilt.correct;
+      stats.total++;
+      if (isCorrect) {
+        stats.correct++;
+        stats.streak++;
+      } else {
+        stats.streak = 0;
+      }
+
+      const acc = Math.round((stats.correct / stats.total) * 100);
+      document.getElementById('stat-accuracy').textContent = `${acc}%`;
+      document.getElementById('stat-correct').textContent = stats.correct;
+      document.getElementById('stat-total').textContent = stats.total;
+      document.getElementById('stat-streak').textContent = `${stats.streak} 🔥`;
+
+      const buttons = document.querySelectorAll('.opt-btn');
+      buttons.forEach((btn, idx) => {
+        btn.disabled = true;
+        btn.classList.remove('hover:bg-slate-800');
+        if (idx === currentBuilt.correct) {
+          btn.classList.remove('bg-slate-800/85', 'border-slate-700/90');
+          btn.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-white');
+        } else if (idx === selectedIdx && !isCorrect) {
+          btn.classList.remove('bg-slate-800/85', 'border-slate-700/90');
+          btn.classList.add('bg-rose-500/20', 'border-rose-500', 'text-white');
+        } else {
+          btn.classList.add('opacity-40');
+        }
+      });
+
+      const fbBox = document.getElementById('feedback-box');
+      const fbIcon = document.getElementById('feedback-icon');
+      const fbTitle = document.getElementById('feedback-title');
+      const fbText = document.getElementById('feedback-text');
+
+      fbBox.classList.remove('hidden', 'bg-emerald-950/70', 'border-emerald-500/50', 'text-emerald-100', 'bg-rose-950/70', 'border-rose-500/50', 'text-rose-100');
+
+      if (isCorrect) {
+        fbBox.classList.add('bg-emerald-950/70', 'border-emerald-500/50', 'text-emerald-100');
+        fbIcon.textContent = '✅';
+        fbTitle.textContent = '¡Jugada Óptima!';
+      } else {
+        fbBox.classList.add('bg-rose-950/70', 'border-rose-500/50', 'text-rose-100');
+        fbIcon.textContent = '❌';
+        fbTitle.textContent = 'Error Costoso';
+      }
+      fbText.textContent = currentBuilt.exp;
+    };
+
+    // ==========================================
+    // 5. EVENTOS DE CONFIGURACIÓN EDITABLE
+    // ==========================================
+    function updateHeaderSummary() {
+      const bbs = Math.round(config.stack / config.bb);
+      document.getElementById('header-stakes-label').textContent = `Ciegas ${fmt(config.sb)}/${fmt(config.bb)} • Miss. ${fmt(config.miss)}`;
+      document.getElementById('config-summary-pill').textContent = `${bbs} BB Efectivas`;
+    }
+
+    function setLevelUI(lvl) {
+      config.level = lvl;
+      document.querySelectorAll('.lvl-btn').forEach(btn => {
+        const btnLvl = Number(btn.dataset.level);
+        if (btnLvl === lvl) {
+          btn.classList.remove('bg-slate-800/70', 'border-slate-700', 'text-slate-300');
+          btn.classList.add('bg-emerald-500/15', 'border-emerald-500', 'text-white');
+        } else {
+          btn.classList.remove('bg-emerald-500/15', 'border-emerald-500', 'text-white');
+          btn.classList.add('bg-slate-800/70', 'border-slate-700', 'text-slate-300');
+        }
+      });
+    }
+
+    window.applyPreset = function(sb, bb, stack, miss) {
+      document.getElementById('input-sb').value = sb;
+      document.getElementById('input-bb').value = bb;
+      document.getElementById('input-stack').value = stack;
+      document.getElementById('input-miss').value = miss;
+      syncConfigFromInputs(true);
+    };
+
+    function syncConfigFromInputs(reload = true) {
+      const sb = Math.max(1, Number(document.getElementById('input-sb').value) || 1);
+      const bb = Math.max(sb * 2, Number(document.getElementById('input-bb').value) || 2);
+      const stack = Math.max(bb * 10, Number(document.getElementById('input-stack').value) || 200);
+      const miss = Math.max(bb, Number(document.getElementById('input-miss').value) || bb * 5);
+
+      config.sb = sb;
+      config.bb = bb;
+      config.stack = stack;
+      config.miss = miss;
+
+      updateHeaderSummary();
+      if (reload) {
+        refillBag();
+        loadNextScenario();
+      }
+    }
+
+    document.querySelectorAll('.lvl-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setLevelUI(Number(btn.dataset.level));
+        syncConfigFromInputs(true);
+      });
+    });
+
+    document.getElementById('apply-config-btn').addEventListener('click', () => {
+      syncConfigFromInputs(true);
+      document.getElementById('simulador').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    document.getElementById('toggle-config-btn').addEventListener('click', () => {
+      document.getElementById('config-panel').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    document.getElementById('next-btn').addEventListener('click', loadNextScenario);
+
+    // Inicializar
+    setLevelUI(2);
+    updateHeaderSummary();
+    refillBag();
+    loadNextScenario();
+  </script>
+</body>
+</html>
